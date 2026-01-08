@@ -1,3 +1,20 @@
+#
+*.DS_STORE
+
+.cls
+*.pdf
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+
+
+*.idea
+*CLAUDE*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

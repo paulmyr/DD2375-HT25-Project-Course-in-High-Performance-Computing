@@ -1,0 +1,451 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{How to write a paper: Cheat Sheet}
+
+\author{\IEEEauthorblockN{1\textsuperscript{st} Stefano Markidis}
+\IEEEauthorblockA{\textit{Division of Computational Science and Technology} \\
+\textit{KTH Royal Institue of Technology}\\
+Stockholm, Sweden \\
+markidis@kth.se}
+\and
+\IEEEauthorblockN{2\textsuperscript{nd} Ivy Peng}
+\IEEEauthorblockA{\textit{Division of Computational Science and Technology} \\
+\textit{name of organization (of Aff.)}\\
+\textit{KTH Royal Institue of Technology}\\
+Stockholm, Sweden \\
+bopeng@kth.se}
+}
+
+\maketitle
+
+\begin{abstract}
+  The Abstract is a concise summary of your research, providing readers with a snapshot of your work's problem, methodology, results, and significance. An abstract should convey the key aspects of your paper in a clear and structured manner, often including quantitative results.\\[0.5em]
+\emph{A. Structuring the Abstract}
+\begin{enumerate}
+\item Introduction and Motivation:
+\begin{itemize}
+\item Start by briefly introducing the context and importance of your research. For example: Efficient benchmarking of GPUs is critical for advancing high-performance computing applications such as machine learning and scientific simulations.
+\item State the research problem or gap that your work addresses. Example: Existing benchmarking tools lack scalability and fail to capture the performance nuances of heterogeneous architectures.
+\end{itemize}
+\item Methodology Summary:
+\begin{itemize}
+\item Provide a brief overview of the methods or techniques you developed. Example: This study introduces a novel profiling framework for GPU performance analysis, incorporating dynamic workload balancing and optimized data transfer techniques.
+\end{itemize}
+\item Results Summary:
+\begin{itemize}
+\item Summarize the most important results of your research, preferably in a quantitative way. For example: Experimental results demonstrate that the proposed framework achieves up to 30% improved performance accuracy and 20% faster execution times compared to state-of-the-art tools across a range of workloads.
+\end{itemize}
+\item Concluding Remarks:
+\begin{itemize}
+\item End with a statement about your work's significance or potential applications. Example: These findings provide a foundation for designing more efficient benchmarking tools and contribute to improving GPU utilization in high-performance computing environments.
+\end{itemize}
+\end{enumerate}
+\vspace{0.5em}
+\emph{B. Best Practices for Writing the Abstract}
+\begin{itemize}
+\item Conciseness:
+\begin{itemize}
+    \item Limit the abstract to 150–250 words per standard computer science publication guidelines.
+    \item Focus on essential information, avoiding excessive detail or technical jargon.
+\end{itemize}
+\item Quantitative Results:
+\begin{itemize}
+   \item Whenever possible, include numerical values to make your results more impactful and concrete. Example: The method reduces computational overhead by 15\% and increases scalability by supporting workloads of up to 10,000 tasks.
+\end{itemize}
+\end{itemize}
+\end{abstract}
+
+\begin{IEEEkeywords}
+JIT-Compilation, Automatic Gradient Descent, GPU-Acceleration, Integrate-and-Fire Model, Simplified Neuron Model
+\end{IEEEkeywords}
+
+\section{Introduction}\label{sec:intro}
+The Introduction section provides the context and importance of your research and the motivation behind the work, as well as outlines the specific contributions of the paper. This section should establish the significance of the topic and provide a roadmap for the rest of the paper.  
+
+\subsection{Structuring the Introduction Section}
+\begin{enumerate}
+\item Establishing the Importance of the Topic:  
+\begin{itemize}
+   \item Begin by explaining the broader relevance of the topic within the field of computer science or high-performance computing. For instance: Efficient benchmarking of GPUs is critical for optimizing performance in modern applications, ranging from scientific simulations to machine learning.  
+   \item Highlight the challenges or gaps in current knowledge or technology that your work addresses. Example: Despite significant advancements, existing state-vector simulators for quantum computers often fail to scale effectively on modern heterogeneous architectures.
+\end{itemize}
+\item Motivating the Work:  
+\begin{itemize}
+   \item Articulate the motivation for your study, linking the identified gaps to your research problem. For example: This study aims to address the lack of scalable GPU benchmarking techniques by introducing a novel profiling framework optimized for diverse workloads.  
+   \item Emphasize the potential impact or application of your work. Example: The proposed methods could enhance the design of future quantum simulators, enabling more accurate and efficient analyses of quantum algorithms.  
+\end{itemize}
+\item Presenting Specific Contributions:  
+\begin{itemize}
+   \item Provide the main contributions of the paper in a bullet-point list. Each point should highlight a key aspect of your work and its value to the field. For example:  
+
+     This paper makes the following contributions:
+\begin{itemize}
+     \item A novel benchmarking methodology for GPUs, enabling accurate performance scaling analyses across workloads of varying complexity.  
+     \item An optimized state-vector simulator, tailored for heterogeneous computing architectures, with demonstrated scalability on GPU clusters.  
+     \item A comprehensive evaluation of the proposed methods against existing approaches, highlighting their strengths and limitations.  
+\end{itemize}
+\end{itemize}
+\end{enumerate}
+
+\subsection{Best Practices for Writing the Introduction Section}
+\begin{itemize}
+\item  Clarity and Relevance:  
+\begin{itemize}
+  \item Avoid overly technical details or jargon; save those for later sections.  
+  \item Keep the narrative focused on your work's broader significance and motivation.  
+\end{itemize}
+
+\item Engage the Reader:  
+\begin{itemize}
+  \item Start with an important statement or fact to draw attention to the importance of the topic.  
+  \item Frame your contributions.
+\end{itemize}
+
+\item  Provide an outline of the paper:  
+\begin{itemize}
+  \item End the introduction with a transition to the rest of the paper, outlining its structure briefly. Example: The remainder of this paper is organized as follows: Section \ref{sec:relwork} discusses related work, Section \ref{sec:method} presents the methodology, Section \ref{sec:results} outlines the results, and Section \ref{sec:discussion} concludes with a discussion of the findings and future work.  
+\end{itemize}
+\end{itemize}
+\section{Background}\label{sec:background}
+The Background section is the information and context needed for readers to understand your research. It provides the terminologies, principles, algorithms, and systems your work builds upon. Differently from the related work section, which analyzes prior research, the background focuses on summarizing essential information required to comprehend your contributions.  
+
+\subsection{Structuring the Background Section}
+\begin{enumerate}
+  \item Establishing the Foundations:  
+  \begin{itemize}
+    \item Begin with an introduction to the core concepts, terminologies, or systems related to your study.  
+  \begin{itemize}
+    \item Example: GPU benchmarking involves measuring the computational efficiency and resource utilization of GPUs under varying workloads. This requires understanding GPU architecture, including compute cores, memory hierarchy, and execution pipelines.  
+  \end{itemize}
+  \end{itemize}
+\item Providing Technical Context:  
+  \begin{itemize}
+    \item Elaborate on specific algorithms, equations, or frameworks your work relies upon. Use diagrams, pseudo-codes, or tables. 
+  \begin{itemize}
+    \item Example: If you’re benchmarking GPUs, include an overview of standard profiling tools, the metrics they collect (e.g., throughput, latency), and any relevant governing equations.  
+     \item For a study on quantum state-vector simulators, provide a concise explanation of state-vector representation and computational techniques for simulating quantum operations.  
+  \end{itemize}
+  \end{itemize}
+
+\item Describing Relevant Systems:  
+  \begin{itemize}
+   \item Introduce the key hardware or software systems involved in your research. Include details on their structure, behavior, or applications.  
+  \begin{itemize}
+     \item Example: NVIDIA's CUDA programming model allows developers to write parallel applications for GPUs by leveraging thread hierarchies and shared memory mechanisms, as depicted in Figure 1.
+  \end{itemize}
+  \end{itemize}
+
+\item Use of Visuals:  
+  \begin{itemize}
+   \item Incorporate diagrams to explain architectures, data flows, or key concepts. For instance:  
+    \begin{itemize}
+     \item A block diagram of GPU architecture.  
+     \item A flowchart depicting an algorithm's steps.  
+    \end{itemize}
+   \item Example: Figure 2 illustrates the memory hierarchy of modern GPUs, showing the relationship between global memory, shared memory, and registers.  
+  \end{itemize}
+
+\end{enumerate}
+
+\subsection{Best Practices for Writing the Background Section}
+\begin{itemize}
+\item Clarity:  
+\begin{itemize}
+   \item Write for an audience familiar with computer science but not necessarily experts in your domain. Define terms and concepts as needed.  
+\end{itemize}
+
+\item Focus on Essentials:  
+\begin{itemize}
+   \item Include only the information that is necessary to understand your research. Avoid excessive detail or tangential topics.  
+\end{itemize}
+
+\item Structured Presentation:  
+\begin{itemize}
+   \item Use subheadings to organize the content into logical sections, such as "GPU Architectures" or "State-Vector Simulations."  
+\end{itemize}
+
+\item What to Avoid:  
+\begin{itemize}
+   \item Do not include motivations, contributions, or results—these belong in the Introduction, Methodology, or Results sections.  
+\end{itemize}
+\end{itemize}
+\section{Related Work}\label{sec:relwork}
+The Related Work section places your research within the broader context of existing literature, highlighting connections, distinctions, and gaps. Its goal is to demonstrate familiarity with the state of the art and justify the novelty of your contributions.
+
+\subsection{Structuring the Related Work Section}
+\begin{enumerate}
+\item Contextual Overview:  
+\begin{itemize}
+   \item You can begin with a brief introduction to the field or subfield in which your research is located.  
+   \item Example: High-performance computing has seen significant advancements in GPU benchmarking techniques over the past decade, driven by the growing demand for scalable and efficient tools across diverse applications such as deep learning and scientific simulations.  
+\end{itemize}
+
+\item Thematic Grouping of Literature:  
+\begin{itemize}
+   \item Organize the related work into themes or categories to make comparisons clearer. For example:  
+\begin{itemize}
+     \item Benchmarking Methodologies. Describe previous approaches to GPU benchmarking, emphasizing their strengths and limitations. Example: Traditional profiling tools, such as Tool A [Ref] and Tool B [Ref], provide accurate performance metrics but lack support for heterogeneous architectures. 
+     \item Optimization Techniques: Discuss research focusing on methods to enhance GPU performance. Example: Recent studies have introduced techniques like kernel fusion [Ref] and memory coalescing [Ref], which improve efficiency but often require significant manual intervention.  
+     \item Quantum Simulations on GPUs: If applicable, address literature specific to your research niche. Example: State-vector simulators for quantum computing have been optimized for CPUs [Ref], but their adaptation to GPUs remains underexplored.  
+\end{itemize}
+\end{itemize}
+
+\item Highlighting Gaps in the Literature:  
+\begin{itemize}
+   \item Identify the limitations or open questions in existing work that your research aims to address. Example: While prior studies provide valuable insights into profiling techniques, they do not account for the dynamic workload variations characteristic of heterogeneous environments. This gap motivates our development of an adaptive GPU benchmarking framework.  
+\end{itemize}
+
+\item Connecting to Your Work:  
+\begin{itemize}
+   \item Conclude by positioning your research as a response to the identified gaps. Example: Building on the strengths of existing methodologies, this study introduces a novel approach that combines adaptive load balancing with automated profiling, addressing scalability and performance challenges in heterogeneous systems. 
+\end{itemize}
+\end{enumerate}
+
+\subsection{Best Practices for Writing the Related Work Section}
+\begin{itemize}
+\item Critical Analysis:  
+\begin{itemize}
+   \item Go beyond merely summarizing previous studies; critically assess their relevance and shortcomings.  
+   \item Use comparisons to highlight how your work differs or improves upon existing solutions.  
+\end{itemize}
+\end{itemize}
+
+\begin{itemize}
+\item Citations and Relevance:  
+\begin{itemize}
+   \item Ensure that all cited works are directly relevant to your study. Use a mix of foundational papers and recent advancements.  
+   \item Example: Recent works such as Smith et al. [Ref] and Lee et al. [Ref] provide comprehensive benchmarks for single-node systems but fail to address multi-node configurations.  
+\end{itemize}
+\end{itemize}
+
+\begin{itemize}
+\item Clear Organization:  
+\begin{itemize}
+   \item Use subheadings to structure the section, especially if discussing multiple categories of related work.  
+\end{itemize}
+\end{itemize}
+
+\begin{itemize}
+\item Avoid Overlap with Background Section:  
+\begin{itemize}
+   \item The related work section focuses on analyzing prior research, while the background section provides foundational knowledge. Avoid redundancy.
+\end{itemize}
+\end{itemize}
+
+\section{Methodology}\label{sec:method}
+The Methodology section describes the specific methods and techniques you developed or applied in your research. The methodology centers on the logical and technical steps of your approach. It explains how the research problem is addressed and provides details on implementation.  
+
+\subsection{Structuring the Methodology Section}
+\begin{enumerate}
+\item Overview of the Approach:  
+\begin{itemize}
+   \item Begin by providing a high-level overview of the methods used in your research. 
+   \item Example: This study introduces a profiling framework to benchmark GPU performance, focusing on optimizing memory transfers and achieving efficient load balancing across compute units.
+\end{itemize}
+
+\item Detailed Method Description:  
+\begin{itemize}
+   \item Break down the methodology into its core components or stages.  
+\begin{itemize}
+     \item If your work involves developing an algorithm, explain its design and the steps in detail, supported by pseudo-code, flowcharts, or diagrams. Example: The load-balancing algorithm dynamically adjusts thread allocation based on real-time resource usage metrics, as shown in Figure 1.  
+     \item If you focus on software techniques, describe your architectural choices or optimization strategies. Example: Kernel fusion techniques were applied to reduce memory latency by combining compute-intensive tasks into a single execution step.  
+\end{itemize}
+   \item Where applicable, include mathematical formulations or governing equations that underpin the methods. Example: Performance metrics were calculated using efficiency=theoretical peak/actual throughput.
+\end{itemize}
+
+\item Justification of the Methods:  
+\begin{itemize}
+   \item Explain why the selected methods are appropriate for addressing the research problem.  
+   \item Example: The use of dynamic workload balancing was motivated by observed performance bottlenecks in traditional static allocation schemes, as demonstrated in previous studies [Ref].
+\end{itemize}
+\end{enumerate}
+
+\subsection{Best Practices for Writing the Methodology Section}
+\begin{itemize}
+\item Clarity and Flow:  
+\begin{itemize}
+   \item Present the methods logically and step-by-step, using subheadings for different components or stages.  
+\end{itemize}
+
+\item Focus on Methods, Not Results:  
+\begin{itemize}
+   \item Avoid discussing the outcomes of your methodology, as these belong in the Results section. Instead, describe the process and rationale.  
+\end{itemize}
+
+\item Use Visual Aid:  
+\begin{itemize}
+   \item Incorporate diagrams, pseudo-codes, or tables to illustrate your methods effectively.  
+\end{itemize}
+
+\item What to Exclude:  
+\begin{itemize}
+   \item Avoid describing hardware specifications, compiler settings, or software versions here—these details should be confined to the Experimental Setup section. 
+\end{itemize}
+\end{itemize}
+\section{Experimental Setup}\label{sec:expsetup}
+The  Experimental Setup section provides all the technical details required to reproduce the experiments presented in your study.
+
+This section \textbf{bridges the methodology and results by describing the hardware, software, and configurations used to execute your experiments}.
+\subsection{Structuring the Experimental Setup Section}
+\begin{enumerate}
+\item Hardware Configuration:  
+\begin{itemize}
+   \item Describe the hardware used for your experiments in detail. Include information such as:  
+\begin{itemize}
+     \item Processors: Model, architecture, number of cores, and base/turbo clock speeds. Example: All experiments were performed on a system with an AMD EPYC 7742 CPU (64 cores, 2.25 GHz base clock) and an NVIDIA A100 GPU (80 GB HBM2e, 1.41 GHz boost clock).
+     \item Memory: Total system memory, memory type (e.g., DDR4, HBM), and frequency.  
+     \item Storage: Type (e.g., SSD, NVMe) and capacity of storage devices.  
+     \item Networking: If applicable, include details about network connections, such as bandwidth and latency for distributed experiments.  
+\end{itemize}
+\end{itemize}
+
+\item Software Environment:  
+\begin{itemize}
+   \item Specify the operating system and version used. Example: The experiments were conducted on Ubuntu 22.04 with kernel version 5.15.  
+   \item List software libraries, frameworks, and tools, along with their versions. Example: CUDA 11.8 was used for GPU programming, and the cuBLAS library (v11.9.2) was utilized for linear algebra operations.  
+   \item Include the compiler and its version, along with the compilation flags used. Example: Code was compiled using GCC 12.1 with the following flags: `-O3 -march=native -fopenmp. 
+\end{itemize}
+
+\item Experimental Configurations:  
+\begin{itemize}
+   \item Provide details about workload generation or input datasets. Example: Benchmarks used synthetic workloads ranging in size from 10 GB to 100 GB, generated using the xyz-benchmark tool (v2.3).  
+   \item State any specific runtime configurations, such as thread counts, block sizes, or environmental variables. Example: GPU kernels were launched with 1024 threads per block, and the environment variable \verb|OMP_NUM_THREADS| was set to 64.
+   \item If applicable, mention the conditions under which the experiments were run. Example: All experiments were executed in single-user mode to minimize resource contention.
+\end{itemize}
+
+\item Reproducibility Considerations:  
+\begin{itemize}
+   \item Detail any steps to ensure reproducibility, such as random seed initialization. Example: Random seeds were fixed at 42 for all stochastic processes to ensure consistent results across runs.  
+   \item Mention how raw data and scripts are organized or made available. Example: All experiment scripts and datasets are available at [repository link].
+\end{itemize}
+\end{enumerate}
+
+\subsection{Best Practices for Writing the Experimental Setup Section}
+\begin{itemize}
+\item  Clarity and Completeness:  
+\begin{itemize}
+   \item Include all details necessary for replication.  
+   \item Use tables where appropriate to summarize hardware and software specifications.  
+\end{itemize}
+
+\item Precision:  
+\begin{itemize}
+   \item Provide exact versions of software and libraries to avoid ambiguity.  
+   \item Specify compiler flags and hardware settings explicitly.
+\end{itemize}
+\end{itemize}
+
+\section{Results}\label{sec:results}
+The Results Section of a scientific paper is dedicated to presenting the outcomes of your research in a clear, concise, and structured way.
+
+This section should focus on the data obtained through experiments, simulations, or analyses and show them via plots, tables, and brief descriptive text. The goal is to represent your findings, leaving interpretations and discussions for the later "Discussion and Conclusion" section.  
+
+\subsection{Structuring the Results Section}
+\begin{enumerate}
+\item Presenting Data:  
+\begin{itemize}
+   \item Use plots (e.g., line graphs, bar charts, scatter plots) to visualize performance trends, scaling behavior, or comparative benchmarks.  
+   When exact values are critical, tables should be included to present precise numerical results, such as speedups, execution times, or error rates.  
+\end{itemize}
+
+\item Describing Results:  
+\begin{itemize}
+   \item Accompany each plot or table with a clear caption summarizing its content, e.g., what the line colors mean.
+   \item Use descriptive text to highlight key trends, differences, or anomalies without interpreting their reasons. For example: "Figure 1 shows the scaling performance of GPU X compared to GPU Y across different workloads. GPU X consistently achieves higher throughput for small problem sizes, while GPU Y outperforms for larger workloads."  
+   \item Ensure that your text refers explicitly to the plots or tables (e.g., "As shown in Table 2...").  
+\end{itemize}
+\end{enumerate}
+
+\subsection{Best Practices for Scientific Plots and Tables}
+\begin{itemize}
+\item Tools for Plotting:  
+\begin{itemize}
+  \item Create publication-quality plots using plotting libraries or software such as Matplotlib (Python), Seaborn (Python), R ggplot2, or Gnuplot.  
+  \item For ease of integration with LaTeX documents, tools like PGFPlots Links to an external site. or exporting plots in vector formats (e.g., PDF, SVG) should be used.  
+  \item Maintain uniform styles across plots: consistent font sizes, color schemes, and axis labels improve readability and professionalism.  
+\end{itemize}
+
+\item Formatting Guidelines:  
+\begin{itemize}
+  \item Use clear, descriptive axis labels and include units of measurement where applicable.  
+  \item Add error bars when presenting experimental or simulation data to indicate variability or confidence intervals.  
+\end{itemize}
+\end{itemize}
+
+What to Avoid in the Results Section  
+\begin{itemize}
+\item Do not include interpretations, discussions, or speculations about the results; these belong in the "Discussion and Conclusion" section.  
+\item Avoid describing every data detail redundantly—focus on the most significant findings.  
+\end{itemize}
+\section{Discussion and Conclusion}\label{sec:discussion}
+The Discussion and Conclusion section provides an interpretation of your results, placing them in the context of your research question. This section summarizes your findings, talks about their implications, identifies limitations and proposes potential improvements or future research directions.
+
+\subsection{Structuring the Discussion and Conclusion Section}
+\begin{enumerate}
+\item Summarizing the Work and Results:  
+\begin{itemize}
+   \item Begin with a concise summary of your research objectives, methodologies, and key results. For instance: This study aimed to benchmark the performance of GPU X and GPU Y for matrix multiplication tasks. The results showed that GPU X performed better for smaller datasets, whereas GPU Y demonstrated superior scalability for larger workloads.  
+   \item Highlight the main contributions of your work, emphasizing its novelty and significance.  
+\end{itemize}
+
+\item Discussing the Results:  
+\begin{itemize}
+   \item Analyze the results, explaining their significance and any observed trends. Address questions such as:  
+\begin{itemize}
+     \item What do the results mean in the context of your research question?  
+     \item What are the implications for the field or specific applications?  
+\end{itemize}
+   \item Use comparisons with related studies to show your approach's strengths or unique aspects. For example: Compared to prior benchmarks on GPU X, our method achieves a 20% increase in throughput due to optimized memory usage.  
+\end{itemize}
+
+\item Identifying Limitations:  
+\begin{itemize}
+   \item Acknowledge any limitations of your study, such as constraints in experimental setup, assumptions in your models, or scalability challenges. For example: "The benchmarks were conducted using synthetic workloads, which may not fully represent real-world application performance."  
+\end{itemize}
+
+\item Proposing Improvements and Future Work:  
+\begin{itemize}
+   \item Suggest specific ways to address the limitations in future studies. For instance: Future work could explore the performance of GPU X on diverse application domains, including graph processing and neural network training.
+   \item Highlight other research opportunities coming from your findings. For example: This study opens the door to investigating the impact of hybrid GPU-CPU architectures on similar workloads.  
+\end{itemize}
+\end{enumerate}
+
+\subsection{Best Practices for Writing the Discussion and Conclusion Section}
+\begin{itemize}
+\item  Focus:  
+\begin{itemize}
+  \item Avoid restating all results in detail—focus on interpreting the most significant findings.  
+  \item Link results to broader themes or questions in the field.  
+\end{itemize}
+
+\item  Constructive Outlook:  
+\begin{itemize}
+  \item Frame limitations as opportunities for improvement rather than flaws.  
+  \item End with a strong concluding statement summarizing the contribution of your work to the field.  
+\end{itemize}
+\end{itemize}
+\section*{Acknowledgment}\label{sec:ack}
+\begin{itemize}
+  \item Supervisor’s contributions
+  \item Research group (especially if the thesis in question is a master’s and the work is helped along by a PhD student)
+  \item Support/Administrative staff  (laboratory technicians, etc.)
+  \item Industry collaborations, people they worked with
+\end{itemize}
+\section*{References}\label{sec:references}
+Bibliography.
+% -- References
+%\bibliography{bibliography.bib}
+%\bibliographystyle{IEEEtran}
+
+\end{document}

@@ -1,0 +1,197 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{biblatex}
+
+% Bibliography file
+\addbibresource{bibliography.bib}
+
+% Section formatting
+\titleformat{\section}
+  {\normalfont\Large\bfseries}{\thesection.}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}{\thesubsection}{1em}{}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=magenta,
+    urlcolor=blue,
+    citecolor=blue,
+}
+
+\begin{document}
+
+% Title
+\begin{center}
+    \LARGE\textbf{Project Specification} \\
+    \vspace{0.5cm}
+    \large DD2375 Project Course in HPC \\
+    \vspace{0.3cm}
+    \normalsize Paul Mayer \\
+    \today
+\end{center}
+
+\vspace{1cm}
+
+\section{PROJECT INFORMATION}
+
+\subsection*{Preliminary Title}
+% Enter your project title here
+Adapting Jaxley for Efficient Parameter Identification in AdEx Neuron Models: A JIT-Compiled, GPU-Accelerated Approach using Automatic Differentiation
+
+\subsection*{Keywords}
+% List 3-5 keywords relevant to your project
+JIT-Compilation, Automatic Gradient Descent, GPU-Acceleration, Integrate-and-Fire Model, Simplified Neuron Model
+
+\section{BACKGROUND \& OBJECTIVE}
+A central challenge in neuroscience has been to 'identify the parameters of detailed biophysical models, such that they match physiological measurements at scale' \cite{Deistler2024} in reasonable simulation runtimes.
+The zoo of optimisation techniques is large, spanning from evolutionary algorithms \cite{VanGeit2008} to gradient descent \cite{Jones2024}, however, deciding which algorithm to use may often depend on the underlying properties of the model.
+\verb|JAXLEY|, a newly developed framework, uses automatic differentiation to quickly parameters to experimental data.
+It shows very promising results, matching or outperforming other state-of-the-art (e.g. genetic algorithms) in performance for small and large Neurone models respectively \cite{Deistler2024}.
+
+Neurone models, like models in all sciences, should explain observations and make predictions. However, the level of abstraction of models vary a lot depending on underlying assumptions and required parameters.
+Therefore the choice of model is highly dependent on the problem at hand \cite{Levenstein2023}.
+The level of abstraction not only has direct impact on the performance metrics of the simulation but also create difficulties when analysing larger and more complex networks \cite{Gerstner2014}. 
+Therefore, Simplified Neurone Models like the Adaptive Exponential Integrate-And-Fire \cite{Naud2008} model are still used today \cite{Tesler2024}.
+
+It remains unclear if adapting a Simplified Neurone Model  (e.g. AdEx or Leaky integrate-and-fire) to allow for automatic differentiation (e.g. by introducing surrogate gradients) performance gains can be achieved.
+This project will try to answer this question.
+
+\section{RESEARCH QUESTION \& METHOD}
+
+\subsection*{Research Question}
+\textbf{Question:} How could Jaxley be used to increase performance for parameter identification of adaptive exponential integrate-and-fire neural models.\\
+\textbf{Hypothesis:} Making the differential equation continuous will effect the shape of the spike and therefore also the spiking behaviour.
+The main challenge will be to keep the equation behaviour as close to the original equation, preferably not changing the parameter behaviour compared to the original model.
+However, this will be very unlikey, I do expect deviations.
+Runtime improvements should be expected, especially when making use of accelerators due to 'access' to better optimisers.
+
+\subsection*{Objectives}
+\begin{enumerate}
+\item Provide discontinuous implementation of AdEx Model using Jaxley. That means: reimplemented the AdEx differential equations in the Jaxley Framework
+      and verify the behaviour against other AdEx implementations.
+      The discontinuity is the result of a reset, once a potential threshold is reached.
+\item Provide surrogate gradient implementation in Jaxley that reproduces results of other AdEx Model implementations or make equations differentiable.
+\item Compare performance of discontinuous and continuous model.
+\item If time, compare performance of discontinuous and continuous model using GPU accelerators.
+\item If time, compare runtime performance to other state-of-the-art parameter optimisers (e.g. using genetic algorithms) of AdEx Neurone Model
+\end{enumerate}
+
+\subsection*{Tasks}
+% Describe the tasks necessary to reach the objectives
+% For each task, describe the challenges it involves
+\begin{enumerate}
+    \item Provide discontinuous implementation of AdEx Model using Jaxley. That means: reimplemented the AdEx differential equations in the Jaxley Framework
+      and verify the behaviour against other AdEx implementations.
+      The discontinuity is the result of a reset, once a potential threshold is reached.
+
+    \textbf{Challenges}:
+    \begin{itemize}
+        \item Documentation of Jaxley framework (very new and cutting edge research software) might be immature.
+        \item Correctness needs to be verified with other simulations / experiments, can be tricky to find applicable implementations.
+    \end{itemize}
+
+    \item Allow model to be automatically differentiated, e.g. surrogate gradient (using splines?).
+
+    \textbf{Challenges}:
+    \begin{itemize}
+        \item Changes to model might decrease it's precision.
+        \item I might not be able to come up with a reasonable idea within the project timeline on how to make the model differentiable.
+        \item I might struggle to implement this within the given time constraints.
+    \end{itemize}
+    \item Compare performance of differentiable and not differentiable model.
+
+    \textbf{Challenges}:
+      \begin{itemize}
+        \item I think this should be pretty straight forward.
+      \end{itemize}
+    \item If time, compare performance using GPU accellerators.
+
+    \textbf{Challenges}:
+      \begin{itemize}
+      \item Finding suitable testing environment that has GPUs available (I think Google Colab should work though)
+      \end{itemize}
+    \item If time, compare performance with other (state-of-the-art) AdEx implementation(s).
+
+    \textbf{Challenges}:
+    \begin{itemize}
+    \item Finding other implementation might be challenging.
+    \item Running said implementations in same computational environment might lead to complications.
+    \item Validation against real experimental data might fail.
+    \item Also, I suspect that there will just not be enough time within this course to finish this, e.g. getting other AdEx implementations to run so I can compare them.
+    \end{itemize}
+\end{enumerate}
+
+\subsection*{Method}
+The main contributions will be the following:
+
+I will develop a differentiable version of the AdEx integrate-and-fire model.
+This is needed because Jaxley performs automatic differentiation to do parameter optimisations.
+Validate against experimental data, depending on the specific neurone type / network (e,g.: striatal projection neurons might be applicable).
+To compare and quantify the runtime performance of differentiable and non-differentiable implementation, I plan to run a benchmark on given implementation. I will specify this after conducting the necessary literature review. If there is time, I want to benchmark using GPUs as well.
+I aim to compare this to other state-of-the-art approaches as well.
+For this I would need to measure the runtime in the same computational environment, which I think will probably a Google Colab environment.
+This should indicate if exploiting the gradient information can increase performance of parameter identification.
+
+\section{TIME PLAN}
+
+% Provide a project timeline, specifying main tasks and time allocated
+% Include milestones (time of achievement of intermediate goals)
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Task/Milestone} & \textbf{Time Period} & \textbf{Duration} \\
+\hline
+Literature review & Week 46 & 1 weeks \\
+\hline
+Development \& verification of non-contiuous equations & Week 47 & 1 week \\
+\hline
+Development \& verification of contiuous equations & Week 48-49 & 2 weeks \\
+\hline
+Milestone 1: Working implementation obtained & End of Week 49 & - \\
+\hline
+\hline
+Performance testing & Week 50 & 1 weeks \\
+\hline
+Milestone 2: Results obtained & End of Week 50 & - \\
+\hline
+\hline
+Analysis \& writing \& presentation preparation & Week 51-1 & 2 weeks \\
+\hline
+Final revision & Week 2 & 1 week \\
+\hline
+Milestone 3: Project completion & End of Week 2 & - \\
+\hline
+\end{tabular}
+\caption{Project timeline with tasks and milestones}
+\end{table}
+
+\section{REFERENCES}
+\printbibliography[heading=none]
+
+\section{AI Disclosure}
+\begin{itemize}
+\item Creating a LaTeX template for this submission.
+\begin{itemize}
+\item Tools/models used (names and versions).\\
+  Claude Code v2.0.31\\
+  Model: Sonnet 4.5
+\item Task: I asked claude to create a latex template for this submission that I can fill with my project idea.
+\item Prompt: Could you create a latex template that I can use to write a project specification. It should follow this templat: [[template provided in 1.4 - Project Specification Template]]
+\item Validation: Compiled the .tex file and removed all the prefilled data. Replaced the bibliography file with a file created by zotreo.
+\end{itemize}
+\end{itemize}
+
+\end{document}

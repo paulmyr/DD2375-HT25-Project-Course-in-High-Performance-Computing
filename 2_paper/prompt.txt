@@ -1,0 +1,6 @@
+I'm currently partaking a project course in my university. Goal is to conduct a very simple research project and provide the
+results in a conference paper like fashion. You can find the project proposal ../1_project_specification/project_specification.tex.
+
+I wrote a draft of a related work section and am currently working on the background section. You can find the current work in the current folder.
+Please give me critical feedback on my current work. This means style choices, but also feedback about the correctness of what I'm doing.
+

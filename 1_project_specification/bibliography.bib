@@ -1,0 +1,123 @@
+@online{Deistler2024,
+  title = {Jaxley: {{Differentiable}} Simulation Enables Large-Scale Training of Detailed Biophysical Models of Neural Dynamics},
+  shorttitle = {Jaxley},
+  author = {Deistler, Michael and Kadhim, Kyra L. and Pals, Matthijs and Beck, Jonas and Huang, Ziwei and Gloeckler, Manuel and Lappalainen, Janne K. and Schröder, Cornelius and Berens, Philipp and Gonçalves, Pedro J. and Macke, Jakob H.},
+  date = {2024-08-21},
+  eprinttype = {Neuroscience},
+  doi = {10.1101/2024.08.21.608979},
+  url = {http://biorxiv.org/lookup/doi/10.1101/2024.08.21.608979},
+  urldate = {2025-10-13},
+  abstract = {Abstract                        Biophysiscal neuron models provide insights into cellular mechanisms underlying neural computations. However, a central challenge has been the question of how to identify the parameters of detailed biophysical models such that they match physiological measurements at scale or such that they perform computational tasks. Here, we describe a framework for simulation of detailed biophysical models in neuroscience—J             axley             —which addresses this challenge. By making use of automatic differentiation and GPU acceleration, J             axley             opens up the possibility to efficiently optimize large-scale biophysical models with gradient descent. We show that J             axley             can learn parameters of biophysical neuron models with several hundreds of parameters to match voltage or two photon calcium recordings, sometimes orders of magnitude more efficiently than previous methods. We then demonstrate that J             axley             makes it possible to train biophysical neuron models to perform computational tasks. We train a recurrent neural network to perform working memory tasks, and a feedforward network of morphologically detailed neurons with 100,000 parameters to solve a computer vision task. Our analyses show that J             axley             dramatically improves the ability to build large-scale data- or task-constrained biophysical models, creating unprecedented opportunities for investigating the mechanisms underlying neural computations across multiple scales.},
+  langid = {english},
+  pubstate = {prepublished},
+  file = {/Users/paulmayer/Library/CloudStorage/GoogleDrive-paul.jofly@gmail.com/My Drive/Resources/Papers and Uni-Books/Deistler et al.2024.pdf}
+}
+
+@book{Gerstner2014,
+  title = {Neuronal Dynamics: From Single Neurons to Networks and Models of Cognition},
+  shorttitle = {Neuronal Dynamics},
+  editor = {Gerstner, Wulfram},
+  date = {2014},
+  publisher = {Cambridge Univ. Press},
+  location = {S.l.},
+  doi = {10.1017/CBO9781107447615},
+  url = {https://neuronaldynamics.epfl.ch/online/index.html},
+  isbn = {978-1-107-63519-7 978-1-107-06083-8},
+  langid = {english},
+  file = {/Users/paulmayer/Library/CloudStorage/GoogleDrive-paul.jofly@gmail.com/My Drive/Resources/Papers and Uni-Books/Gerstner2014.pdf}
+}
+
+@article{Johansson2020,
+  title = {The {{Functional Organization}} of {{Cortical}} and {{Thalamic Inputs}} onto {{Five Types}} of {{Striatal Neurons Is Determined}} by {{Source}} and {{Target Cell Identities}}},
+  author = {Johansson, Yvonne and Silberberg, Gilad},
+  date = {2020-01},
+  journaltitle = {Cell Reports},
+  shortjournal = {Cell Reports},
+  volume = {30},
+  number = {4},
+  pages = {1178-1194.e3},
+  issn = {22111247},
+  doi = {10.1016/j.celrep.2019.12.095},
+  url = {https://linkinghub.elsevier.com/retrieve/pii/S2211124719317607},
+  urldate = {2025-10-13},
+  langid = {english},
+  file = {/Users/paulmayer/Zotero/storage/5W8NZXBF/Johansson and Silberberg2020.pdf}
+}
+
+@online{Jones2024,
+  title = {Efficient Optimization of {{ODE}} Neuron Models Using Gradient Descent},
+  author = {Jones, Ilenna Simone and Kording, Konrad Paul},
+  date = {2024},
+  doi = {10.48550/ARXIV.2407.04025},
+  url = {https://arxiv.org/abs/2407.04025},
+  urldate = {2025-11-06},
+  abstract = {Neuroscientists fit morphologically and biophysically detailed neuron simulations to physiological data, often using evolutionary algorithms. However, such gradient-free approaches are computationally expensive, making convergence slow when neuron models have many parameters. Here we introduce a gradient-based algorithm using differentiable ODE solvers that scales well to high-dimensional problems. GPUs make parallel simulations fast and gradient calculations make optimization efficient. We verify the utility of our approach optimizing neuron models with active dendrites with heterogeneously distributed ion channel densities. We find that individually stimulating and recording all dendritic compartments makes such model parameters identifiable. Identification breaks down gracefully as fewer stimulation and recording sites are given. Differentiable neuron models, which should be added to popular neuron simulation packages, promise a new era of optimizable neuron models with many free parameters, a key feature of real neurons.},
+  pubstate = {prepublished},
+  version = {2},
+  keywords = {FOS: Biological sciences,Neurons and Cognition (q-bio.NC)}
+}
+
+@article{Levenstein2023,
+  title = {On the {{Role}} of {{Theory}} and {{Modeling}} in {{Neuroscience}}},
+  author = {Levenstein, Daniel and Alvarez, Veronica A. and Amarasingham, Asohan and Azab, Habiba and Chen, Zhe S. and Gerkin, Richard C. and Hasenstaub, Andrea and Iyer, Ramakrishnan and Jolivet, Renaud B. and Marzen, Sarah and Monaco, Joseph D. and Prinz, Astrid A. and Quraishi, Salma and Santamaria, Fidel and Shivkumar, Sabyasachi and Singh, Matthew F. and Traub, Roger and Nadim, Farzan and Rotstein, Horacio G. and Redish, A. David},
+  date = {2023-02-15},
+  journaltitle = {The Journal of Neuroscience},
+  shortjournal = {J. Neurosci.},
+  volume = {43},
+  number = {7},
+  pages = {1074--1088},
+  issn = {0270-6474, 1529-2401},
+  doi = {10.1523/JNEUROSCI.1179-22.2022},
+  url = {https://www.jneurosci.org/lookup/doi/10.1523/JNEUROSCI.1179-22.2022},
+  urldate = {2025-11-04},
+  abstract = {In recent years, the field of neuroscience has gone through rapid experimental advances and a significant increase in the use of quantitative and computational methods. This growth has created a need for clearer analyses of the theory and modeling approaches used in the field. This issue is particularly complex in neuroscience because the field studies phenomena that cross a wide range of scales and often require consideration at varying degrees of abstraction, from precise biophysical interactions to the computations they implement. We argue that a pragmatic perspective of science, in which descriptive, mechanistic, and normative models and theories each play a distinct role in defining and bridging levels of abstraction, will facilitate neuroscientific practice. This analysis leads to methodological suggestions, including selecting a level of abstraction that is appropriate for a given problem, identifying transfer functions to connect models and data, and the use of models themselves as a form of experiment.},
+  langid = {english},
+  file = {/Users/paulmayer/Library/CloudStorage/GoogleDrive-paul.jofly@gmail.com/My Drive/Resources/Papers and Uni-Books/Levenstein et al.2023.pdf}
+}
+
+@article{Naud2008,
+  title = {Firing Patterns in the Adaptive Exponential Integrate-and-Fire Model},
+  author = {Naud, Richard and Marcille, Nicolas and Clopath, Claudia and Gerstner, Wulfram},
+  date = {2008-11},
+  journaltitle = {Biological Cybernetics},
+  shortjournal = {Biol Cybern},
+  volume = {99},
+  number = {4--5},
+  pages = {335--347},
+  issn = {0340-1200, 1432-0770},
+  doi = {10.1007/s00422-008-0264-7},
+  url = {http://link.springer.com/10.1007/s00422-008-0264-7},
+  urldate = {2025-10-13},
+  langid = {english},
+  file = {/Users/paulmayer/Zotero/storage/3XXJNR8Z/Naud et al.2008.pdf}
+}
+
+@online{Tesler2024,
+  title = {A Multiscale Model of Striatum Microcircuit Dynamics},
+  author = {Tesler, Federico and Kozlov, Alexander and Grillner, Sten and Destexhe, Alain},
+  date = {2024-08-05},
+  doi = {10.7554/eLife.99402.1},
+  url = {https://elifesciences.org/reviewed-preprints/99402v1},
+  urldate = {2025-10-13},
+  abstract = {Abstract           The striatum is the largest structure in the basal ganglia, and is known for its key role in functions such as learning and motor control. Studying these aspects requires investigating cellular/microcircuits mechanisms, in particular related to learning, and how these small-scale mechanisms affect large-scale behavior, and its interactions with other structures, such as the cerebral cortex. In this paper, we provide a multiscale approach to investigate these aspects. We first investigate striatum dynamics using spiking networks, and derive a mean-field model that captures these dynamics. We start with a brief introduction to the microcircuit of the striatum and we describe, step by step, the construction of a spiking network model, and its mean-field, for this area. The models include explicitly the different cell types and their intrinsic electrophysiological properties, and the synaptic receptors implicated in their recurrent interactions. Then we test the mean-field model by analyzing the response of the striatum network to the main brain rhythms observed experimentally, and compare this response to that predicted by the mean-field. We next study the effects of dopamine, a key neuromodulator in the basal ganglia, on striatal neurons. Integrating dopamine receptors in the spiking network model leads to emerging dynamics, which are also seen in the mean-field model. Finally, we introduce a basic implementation of reinforcement learning (one of the main known functions of the basal-ganglia) using the mean-field model of the striatum microcircuit. In conclusion, we provide a multiscale study of the striatum microcircuits and mean-field, that capture its response to periodic inputs, the effect of dopamine and can be used in reinforcement learning paradigms. Given that several mean-field models have been previously proposed for the cerebral cortex, the mean-field model presented here should be a key tool to investigate large-scale interactions between basal ganglia and cerebral cortex, for example in motor learning paradigms, and to integrate it in large scale and whole-brain simulations.},
+  pubstate = {prepublished},
+  file = {/Users/paulmayer/Zotero/storage/N7K4V3RR/Tesler et al.2024.pdf}
+}
+
+@article{VanGeit2008,
+  title = {Automated Neuron Model Optimization Techniques: A Review},
+  shorttitle = {Automated Neuron Model Optimization Techniques},
+  author = {Van Geit, W. and De Schutter, E. and Achard, P.},
+  date = {2008-11},
+  journaltitle = {Biological Cybernetics},
+  shortjournal = {Biol Cybern},
+  volume = {99},
+  number = {4--5},
+  pages = {241--251},
+  issn = {0340-1200, 1432-0770},
+  doi = {10.1007/s00422-008-0257-6},
+  url = {http://link.springer.com/10.1007/s00422-008-0257-6},
+  urldate = {2025-11-06},
+  langid = {english},
+  file = {/Users/paulmayer/Library/CloudStorage/GoogleDrive-paul.jofly@gmail.com/My Drive/Resources/Papers and Uni-Books/Van Geit et al.2008.pdf}
+}

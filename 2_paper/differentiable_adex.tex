@@ -1,0 +1,386 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[printonlyused,withpage]{acronym}
+%\usepackage{acro}
+\setlength{\marginparwidth }{1.3cm}
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\newcommand{\itodo}[2][yellow]{\vspace{3pt}\todo[inline, color=#1!40]{#2}}
+\newcommand{\mtodo}[2][orange]{\todo[color=#1!40]{#2}}
+
+
+\begin{document}
+
+\title{Extending Jaxley with Surrogate Gradient-Based AdEx: GPU-Accelerated Parameter Optimization for Spiking Neuron Models}
+
+\author{\IEEEauthorblockN{1\textsuperscript{st} Paul Mayer}
+\IEEEauthorblockA{\textit{dept. name?} \\
+\textit{KTH Royal Institue of Technology}\\
+Stockholm, Sweden \\
+pmayer@kth.se}
+%\and
+%\IEEEauthorblockN{2\textsuperscript{nd} Given Name Surname}
+%\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+%\textit{name of organization (of Aff.)}\\
+%City, Country \\
+%email address or ORCID}
+}
+
+\maketitle
+
+\begin{abstract}
+  \vspace{4px}\itodo[blue]{Abstract, due 12th Jan}
+\end{abstract}
+
+\begin{IEEEkeywords}
+JIT-Compilation, Automatic Gradient Descent, GPU-Acceleration, Integrate-and-Fire Model, Simplified Neuron Model
+\end{IEEEkeywords}
+
+\section{Introduction}\label{sec:intro}
+\itodo[blue]{Introduction, due 12th Jan}
+It remains unclear if adapting a Simplified Neuron Model  (e.g. \ac{AdEx} or \ac{LIF}) within \texttt{Jaxley} to allow for automatic differentiation (e.g. by introducing \acp{SG}) performance gains can be achieved.
+This project will try to answer this question.
+
+\section{Background}\label{sec:background}
+\subsection{Neuron Models}
+Large-scale brain models are limited in size mostly by computational feasibility.
+Detailed bio-physical models like the \ac{HH}-model can precisely predict membrane behaviour of a vast variety of neuron types.
+However, they require huge computational resources to estimate the required parameters to fit the models to experimental data.
+Simplified Neuron Models models overcome this challenge, capturing most of the sophisticated neuron behaviour with only a fraction of the computational cost, enabling large-scale simulations \cite{Gerstner2014}.
+The \acf{AdEx} model \cite{Naud2008} provides a particularly interesting balance --- it reproduces a variety of firing patterns but drastically reduces the number of necessary parameters of the model.
+This makes it a favourable model for large-scale neuron simulations \cite{Tesler2024}.
+
+The \ac{AdEx} model improves the simpler \ac{LIF} model in two ways:
+first, it introduces exponential behaviour when initialising the spike.
+Second, the model allows for adaptation, meaning it can change spiking frequencies or post-spike refractoriness based on their firing history.
+It is defined by the equations given in \cite{Brette2005, Naud2008}:
+\begin{align}
+  C \frac{dV}{dt} &= -g_L (V - E_L) + g_L \Delta_T \exp(\frac{V - V_T}{\Delta_T}) + I - w,\label{eq:adex1}\\
+  \tau_w \frac{dw}{dt} &= a(V - E_L) - w,\label{eq:adex2}
+\end{align}
+with the following reset condition:
+\begin{align}
+  \text{if } V > 0 \text{ mV}\; \text{ then} &= \begin{cases}
+    V \rightarrow V_r,\\
+    w \rightarrow w_r = w + b.
+  \end{cases}\label{eq:adex3}
+\end{align}
+
+It describes the membrane potential over time $V(t)$ given an injected current $I(t)$.
+Equation (\ref{eq:adex1}) describes the change of potential.
+$C$ is the membrane capacitance, $g_L$ the leak conductance and $E_L$ the effective resting potential.
+We can understand $-g_L (V - E_L)$ as the leak current that slowly pulls the membrane potential towards it's resting potential.
+$g_L \Delta_T \exp(\frac{V - V_T}{\Delta_T})$ models the depolarisation initialised by the fast reacting sodium channels using and exponential function,
+modelled using a driving force based on an effective threshold potential $V_T$ and an slope factor $\Delta_T$.
+$I$ is the injected current, and $w$ is the adaptation current, which is described in equation \ref{eq:adex2}.
+
+The adaptation mechanism is controlled via an adaptation current which opposes depolarisation.
+Unlike the fast membrane behaviour, this current is related to the time constant $\tau_w$, which controls the decay time.
+It is controlled by $a$ (sub-threshold adaptation) as well as $b$ (spike-triggered adaptation).
+
+Even though the number of parameters is significantly reduced compared to bio-physical \ac{HH}-type models, it still requires parameter fitting --- especially because some parameters (e.g. $a$, $b$ or $\tau_w$) do not have direct physiological counterparts (like $C$ or $g_L$).
+For AdEx to perform as an effective tool, efficient methods for parameter optimizations are essential.
+
+\subsection{Parameter Tuning for Neuron Models}
+A central challenge in neuroscience has been to 'identify the parameters of detailed biophysical models, such that they match physiological measurements at scale' \cite{Deistler2024} in reasonable simulation runtimes.
+The zoo of optimisation techniques is large, spanning from evolutionary algorithms \cite{VanGeit2008} to gradient descent \cite{Jones2024}, however, deciding which algorithm to use may often depend on the underlying properties of the model.
+\texttt{Jaxley} \cite{Deistler2024}, a newly developed framework, uses automatic differentiation to quickly fit parameters of sophisticated biophysical models to experimental data and perform large-scale neuron simulations.
+Specifically, \texttt{Jaxley} allows to simulate multi-compartment models with complex structures (dendrites, axons), cable theory equations and \ac{HH}-type ion channels.
+To perform parameter optimisation, \texttt{Jaxley} uses automatic differentiation (via \texttt{Jax}).
+It shows very promising results, matching or outperforming other state-of-the-art (e.g. genetic algorithms) in performance for small and large neuron models respectively.
+However, as previously stated, in many circumstances it still remains unfeasible to use \ac{HH}-type models for large-scale simulations.
+\texttt{Jaxley} fails to support simplified models to perform parameter tuning.
+The fundamental limitation is that simplified models are not by default automatically differentiable.
+This is a result of the reset condition in equation~\ref{eq:adex3}.
+Addressing this issues requires special treatment: surrogate gradients.
+
+\subsection{Surrogate Gradients}
+\acfp{SG} were developed to adapt spiking neurons (usually using \ac{LIF} neuron models) for training, primarily on classification tasks.
+To fit these models to real data, the typical forward pass - backward pass strategy needed to be enabled.
+Because \\ac{LIF}-type models have a discontinuous derivatives (see reset in equation~\ref{eq:adex3}), automatic differentiation cannot be performed without adjustments.
+To overcome this issue, prior work replaced discontinues (heavyside- function) with continuous (e.g. sigmoid) surrogates, but only for the backward pass \cite{Neftci2019}.
+This work will adapt this idea for \texttt{Jaxley}.
+
+\section{Related Work}\label{sec:relwork}
+Simplified Neuron Models historically were a necessary evil to deal with the fact that computing resources were too limited to perform large scale brain simulations with sophisticated ion-channel based models.
+With the rise of cheap and widely available supercomputing, focus shifted back to more detailed \ac{HH}-type model.
+In recent years however, interest in simplified models resurged, driven by mainly two reasons: researchers wanting to progress \acp{ANN} to use more detailed spiking neurons and computational neuroscientists getting closer to feasibly simulating whole mammal brains.
+\subsection{Parameter Estimation for AdEx Model}
+A neuron model has to replicate behaviour of a huge variety of neurons.
+In simplified neuron models like \ac{AdEx}, some parameters lack a real (measurable) counterpart.
+Therefore parameters have to be estimated using optimisation techniques.
+Traditionally, a huge variety (from evolutionary strategies to particle swarm optimizations) of approaches were used \cite{VanGeit2008}.
+Recently genetic algorithms, multi-state single-agent stochastic search (MSASS) or Teaching-Learning-Based Optimization (TLBO) have been used successfully to tune parameters for the \ac{AdEx} model to real voltage-clamp recordings \cite{Marin2020, Cruz2021}.
+However, these approaches tend to use a lot of computational resources.
+Using automatic differentiation could address this issue.
+
+\subsection{Parameter Learning using Surrogate Gradients in Spiking Neural Networks}
+\acfp{SG} to enable backward pass computation have been explored in multiple works.
+Gerum and Schilling \cite{Gerum2021} explored different surrogates (like sigmoid or esser function) to train a \ac{LIF} based \ac{NN} for image classification tasks.
+The authors used \texttt{Keras} to perform automatic differentiation and backpropagation.
+Perez-Nieves et al. \cite{Perez-Nieves2021} used a sigmoidal surrogate gradient in the backward pass to train a spiking NN in \texttt{PyTorch} to perform a variety of different classification tasks.
+\ac{LIF} models have the disadvantage, that they don't capture complex neuron firing behaviour.
+In contrast, \ac{AdEx} allows for large-scale, realisitic brain simulations \cite{Tesler2024}.
+Regular deep learning tools are not equally equipped to model synaptic connections and dendrite/axon structures which are necessary for realistic brain model behaviour.
+Leveraging the \texttt{Jaxley} framework, we combine modern optimisation techniques with a state-of-the-art neuroscience compute framework.
+
+\subsection{Benchmark Sets for Neuron Models}
+Neuron models are highly specialised and are fit to very specific data.
+Therefore it proves to be difficult to compare models systematically.
+Still, attempts have been made define benchmark sets to test models, e.g. rat cortical pyramidal neurons \cite{Jolivet2008} 
+or more varied data sets \cite{Mohasci2024} containing mixes of surrogate data (data produced by tuned models) and voltage clamp records.
+
+This work will try to replicate the model behaviour given by existing implementations \cite{Stimberg2019} using the parameters given by \cite{Naud2008}.
+For benchmarking the optimisation behaviour, I'm currently waiting for data provided by Alex Kozlov. I will know more about this in a week.
+
+%\cite{Kim2025} Novel approach using \ac{ANN} to predict parameters tunings for HH-type models.
+%Once trained, can produce parameters very quickly and pretty accuratley.
+%Requires backpropagation, ergo continuous derivative.
+
+\itodo{Important papers not yet discussed:\\
+\cite{Jones2024} (Using gradient descent for HH)\\
+- Emphasises why gradient descent is a good idea.\\
+\cite{Gygax2025} (Background information on surrogate gradients)\\
+    - Recent theoretical work on why surrogate gradients work\\
+    - Published in Neural Computation (2025), preprint from April 2024\\
+\cite{Zhou2024} (Comprehensive review of surrogate gradient methods)\\
+    - Notes that "only a few aspects of intelligent brains have been applied" - supports your novelty claim\\
+\cite{Hertag2011} (Alternative approach to speed up AdEx fitting)\\
+    - (10× faster)\\
+    - Shows there's demand for faster methods
+}
+\itodo{Replace preprint of Jaxley with new version \cite{Deistler2025}}
+
+\section{Methodology}\label{sec:method}
+This work introduces two contributions: firstly, we implement the \ac{AdEx} model within \texttt{Jaxley}, providing both standard and surrogate gradient variants.
+The surrogate implementation can easily adopted to Jaxleys existing simplified models: \ac{LIF} and Izhikevich.
+Secondly, we use \texttt{Jaxley} to perform gradient-based optimisation.
+Using gradient-based optimisation requires a differentiable loss function.
+As starting point, we use \ac{MSE} which we will later replace by a custom designed error function.
+
+\subsection{Integration of Surrogate Gradients into Jaxley}
+\texttt{Jaxley} is built on top of \texttt{JAX} and leverages its automatic differentiation capabilities for gradient-based parameter optimisation.
+Neuron dynamics in \texttt{Jaxley} are defined through \texttt{Channel} classes, which specify three core methods: \texttt{update\_states()} for state variable evolution, \texttt{compute\_current()} for membrane current contributions, and \texttt{init\_state()} for initialisation of state variables.
+During simulation, \texttt{JAX} traces these functions to construct a computational graph, enabling automatic gradient computation and backpropagation.
+
+\subsubsection{The Differentiability Problem}
+Simplified neuron models employ a discrete reset mechanism when the membrane potential crosses a threshold.
+This reset is mathematically expressed using the Heavyside step function $H$:
+\begin{equation}
+    H(v - v_{\text{th}}) = \begin{cases} 1 & \text{if } v \geq v_{\text{th}} \\ 0 & \text{otherwise} \end{cases}
+\end{equation}
+The derivative of the Heavyside function is zero almost everywhere (and undefined at the threshold):
+\begin{equation}
+    \frac{\partial H}{\partial v} = 0 \quad \text{for } v \neq v_{\text{th}}
+\end{equation}
+This causes gradients to vanish during backpropagation through spike events, which prevents gradient-based optimisation from working.
+
+\subsubsection{Surrogate Gradient Approach}
+To overcome this limitation, we employ surrogate gradients \cite{Neftci2019}: the forward pass uses the original Heavyside function to maintain correct spike dynamics, while the backward pass substitutes the function with a surrogate.
+This is implemented in \texttt{JAX} using \texttt{jax.custom\_vjp}, which allows defining custom vector-Jacobian products.
+
+We implement three surrogate gradient functions, each providing different gradient characteristics:
+
+\textbf{Sigmoid surrogate:}
+\begin{equation}
+    \frac{\partial \tilde{H}}{\partial x} = \beta \cdot \sigma(\beta x) \cdot (1 - \sigma(\beta x))
+\end{equation}
+where $\sigma$ is the sigmoid function and $\beta$ controls the steepness.
+
+\textbf{Exponential surrogate:}
+\begin{equation}
+    \frac{\partial \tilde{H}}{\partial x} = \beta \cdot \exp(-\beta |x|)
+\end{equation}
+
+\textbf{SuperSpike surrogate} \cite{Zenke2018}:
+\begin{equation}
+    \frac{\partial \tilde{H}}{\partial x} = \frac{1}{(\beta |x| + 1)^2}
+\end{equation}
+
+All three surrogates are centred at the threshold ($x = v - v_{\text{th}}$).
+The hyperparameter $\beta$ controls the sharpness: higher values produce steeper gradients at the threshold, while lower values spread the gradient over a wider voltage ranges.
+
+\subsubsection{Implementation Details}
+To ensure differentiability through the reset mechanism, we reformulate the conditional reset from a discrete selection:
+\begin{equation}
+    v_{\text{new}} = \begin{cases} v_{\text{reset}} & \text{if spike} \\ v & \text{otherwise} \end{cases}
+\end{equation}
+to a continuous, differentiable form:
+\begin{equation}
+    v_{\text{new}} = s \cdot v_{\text{reset}} + (1 - s) \cdot v
+\end{equation}
+where $s = \tilde{H}(v - v_{\text{th}})$ is the surrogate spike indicator.
+This formulation allows gradients to flow through the reset operation.
+
+We apply this approach to the existing \ac{LIF} (\texttt{FireSurrogate}) and Izhikevich models in \texttt{Jaxley}, as well as to the newly implemented \ac{AdEx} model (\texttt{AdExSurrogate}).
+
+\subsection{AdEx Model Implementation}\label{sec:adex_impl}
+We implement the \ac{AdEx} model as a \texttt{Jaxley} channel, following the formulation by Brette and Gerstner \cite{Brette2005} (see Equations~\ref{eq:adex1}--\ref{eq:adex3}).
+Unlike \ac{HH}-type channels that contribute currents to a shared voltage solver, simplified models like \ac{AdEx} handle voltage integration directly within their \texttt{update\_states()} method.
+We follow the implementation pattern of \cite{Deistler2025}.
+
+\subsubsection{Numerical Integration}
+The \ac{AdEx} model consists of two coupled differential equations requiring different numerical treatment:
+
+\textbf{Adaptation current $w$:}
+Equation~\ref{eq:adex2} is linear in $w$, allowing the use of exponential Euler integration for improved numerical stability:
+\begin{equation}
+  todo...
+\end{equation}
+\itodo{w equation + explanation}
+
+\textbf{Membrane potential $V$:}
+The exponential term in Equation~\ref{eq:adex1} makes this equation nonlinear, requiring forward Euler integration:
+\begin{equation}
+    V(t + \Delta t) = V(t) + \Delta t \cdot \frac{dV}{dt}
+\end{equation}
+To prevent numerical overflow from the exponential spike mechanism, we clamp the argument:
+\begin{equation}
+    \exp\left(\frac{V - V_T}{\Delta_T}\right) \rightarrow \exp\left(\min\left(\frac{V - V_T}{\Delta_T}, 10\right)\right)
+\end{equation}
+
+\subsubsection{Spike Detection and Reset}
+After each integration step, we check for threshold crossing ($V > v_{\text{threshold}}$).
+If the threshold is crossed, we apply the reset conditions from Equation~\ref{eq:adex3}.
+For standard \texttt{LIF}, \texttt{AdEx} or \texttt{Izhikevich}, this uses \texttt{jax.lax.select()} for conditional assignment.
+In the differentiable variants, we use the continuous formulation described in Section~\ref{sec:method} for both $V$ and $w$:
+\begin{align}
+    V_{\text{new}} &= s \cdot V_r + (1 - s) \cdot V, \\
+    w_{\text{new}} &= s \cdot (w + b) + (1 - s) \cdot w,
+\end{align}
+where $s: V\rightarrow [0,1]$ is the surrogate of the heavyside function.
+
+\subsubsection{Model Parameters}
+Table~\ref{tab:adex_params} summarises the \ac{AdEx} parameters and their default values.
+Parameters without direct physiological counterparts (e.g., $a$, $b$, $\tau_w$) are primary targets for optimisation.
+
+\begin{table}[h]
+\centering
+\caption{\ac{AdEx} model parameters and default values.}
+\label{tab:adex_params}
+\begin{tabular}{llll}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Default} & \textbf{Unit} \\
+\hline
+Membrane capacitance & $C$ & 200 & pF \\
+Leak conductance & $g_L$ & 10 & nS \\
+Leak reversal & $E_L$ & -70 & mV \\
+Threshold potential & $V_T$ & -50 & mV \\
+Slope factor & $\Delta_T$ & 2 & mV \\
+Reset potential & $V_r$ & -58 & mV \\
+Detection threshold & $v_{\text{threshold}}$ & 0 & mV \\
+Adaptation time constant & $\tau_w$ & 30 & ms \\
+Subthreshold adaptation & $a$ & 2 & nS \\
+Spike-triggered adaptation & $b$ & 0 & pA \\
+\hline
+\end{tabular}
+\end{table}
+
+\itodo{Include necessary changes made to cell morphology to make experiments work.\\Explain that jaxley uses different assumptions than brian2.}
+
+\subsection{Implementation Verification}\label{sec:verification}
+To verify the correctness of our \ac{AdEx} implementation, we compare simulation outputs against Brian2 \cite{Stimberg2019}, a widely-used reference simulator for spiking neural networks.
+
+\subsubsection{Comparison Setup}
+Both simulators are configured identically:
+    \item Time step: $\Delta t = 0.025$ ms
+    \item Simulation duration: 600 ms
+    \item Initial conditions: $V(0) = V_r$, $w(0) = 0$
+\end{itemize}
+
+\subsubsection{Test Cases}
+We evaluate three parameter configurations from Naud et al.\ \cite{Naud2008} that produce distinct firing patterns:
+
+\textbf{Tonic spiking}:\\
+Regular spiking without spike-frequency adaptation, serving as a baseline case.
+\itodo{include right parameters here}
+
+\textbf{Adaptation}:\\
+Strong spike-triggered adaptation with slow decay, producing decreasing firing rates over time.
+\itodo{include right parameters here}
+
+\textbf{Original parameters} \cite{Brette2005}:\\
+The original parameter set from Brette and Gerstner, demonstrating combined adaptation mechanisms.
+\itodo{include right parameters here}
+
+\subsubsection{Comparison Metrics}
+We assess implementation correctness through:
+\begin{itemize}
+  \item is graphical overlay of functions enough\mtodo{figure this out}?
+\end{itemize}
+
+\subsection{Parameter Optimisation Evaluation}\label{sec:param_opt}
+To evaluate the effectiveness of gradient-based optimisation with surrogate gradients, we fit \ac{AdEx} model parameters to experimental voltage recordings.
+
+\subsubsection{Dataset}
+We use intracellular recordings from striatal projection neurons provided by Johansson and Silberberg \cite{Johansson2020}.
+The dataset contains voltage traces from four distinct striatal neuron types, recorded under current-clamp conditions.
+\mtodo{Specify which 4 neuron types once data is confirmed}
+
+\subsubsection{Optimisation Setup}
+\textbf{Trainable parameters:} We optimise a subset of \ac{AdEx} parameters that lack direct physiological measurements: $\{a, b, \tau_w, V_T, \Delta_T\}$.
+Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based on experimental measurements where available.
+\itodo{Will probably change depending on how experiments go}
+
+\textbf{Loss function:} 
+MSE?
+\begin{equation}
+    \mathcal{L}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \left( V_{\text{sim}}(t; \theta) - V_{\text{exp}}(t) \right)^2
+\end{equation}
+where $\theta$ denotes the trainable parameters.
+\mtodo{Consider spike-timing based loss as alternative, I even assume this is way to go.}
+\mtodo{Check what other ppl are doing}
+
+\textbf{Optimiser:} Adam optimiser with learning rate $\eta$.
+\mtodo{Specify learning rate and number of iterations after experiments}
+
+\textbf{Initialisation:} Parameters are initialised within physiologically plausible ranges based on literature values \cite{Naud2008}.
+
+\subsubsection{Evaluation Metrics}
+We assess optimisation performance through:
+\begin{itemize}
+    \item Final loss value (voltage trace MSE)
+    \item Visual comparison of fitted vs.\ experimental traces
+    \item Spike timing accuracy (if applicable)
+    \item Convergence behaviour (loss vs.\ iteration)
+\end{itemize}
+
+As a baseline we will compare our implementation with Guarino et al. \cite{Guarino2025}, who used grid search not on voltage traces but on extracted feature sets of said traces.\mtodo{This is gonna be so much work, might be unfeasible}
+
+\section{Experimental Setup}\label{sec:expsetup}
+\itodo[blue]{Experimental Setup, due 12th Jan}
+\section{Results}\label{sec:results}
+\itodo[blue]{Results, due 12th Jan}
+\section{Discussion and Conclusion}\label{sec:discussion}
+\itodo[blue]{Discussion, due 12th Jan}
+\section*{Acknowledgment}\label{sec:ack}
+\itodo[blue]{Acknowledgment, due 12th Jan}
+
+% -- References
+\bibliography{bibliography.bib}
+\bibliographystyle{IEEEtran}
+
+
+\acrodef{LIF}{Leaky Integrate-and-Fire}
+\acrodef{SG}{Surrogate Gradient}
+\acrodef{AdEx}{Adaptive Exponential Integrate-and-Fire}
+\acrodef{HH}{Hodgkin-Huxley}
+
+\acrodef{ML}{Machine Learning}
+\acrodef{NN}{Neural Network}
+\acrodef{ANN}{Artificial Neural Network}
+\acrodef{CNN}{Convolutional Neural Network}
+\acrodef{RNN}{Recurrent Neural Network}
+
+
+\end{document}

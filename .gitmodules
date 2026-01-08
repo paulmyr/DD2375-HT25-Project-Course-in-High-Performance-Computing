@@ -1,0 +1,6 @@
+[submodule "4_data"]
+	path = 4_data
+	url = https://github.com/a1eko/humanspn.git
+[submodule "3_jaxley"]
+	path = 3_jaxley
+	url = git@github.com:paulmyr/jaxley.git

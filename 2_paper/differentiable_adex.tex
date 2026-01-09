@@ -21,33 +21,63 @@
 
 \begin{document}
 
-\title{Extending Jaxley with Surrogate Gradient-Based AdEx: GPU-Accelerated Parameter Optimization for Spiking Neuron Models}
+\title{Between Two Worlds: Surrogate Gradients for Gradient-Based Parameter Estimation in Simplified Neuron Models}
 
 \author{\IEEEauthorblockN{1\textsuperscript{st} Paul Mayer}
-\IEEEauthorblockA{\textit{dept. name?} \\
+\IEEEauthorblockA{
 \textit{KTH Royal Institue of Technology}\\
 Stockholm, Sweden \\
 pmayer@kth.se}
-%\and
-%\IEEEauthorblockN{2\textsuperscript{nd} Given Name Surname}
-%\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-%\textit{name of organization (of Aff.)}\\
-%City, Country \\
-%email address or ORCID}
 }
 
 \maketitle
 
+\itodo[green]{\textbf{REVISION SUMMARY - Priority Order:}\\
+\textcolor{red}{RED = Must change (wrong framing or missing)}\\
+\textcolor{cyan}{CYAN = Should improve (clarify narrative)}\\
+\textcolor{orange}{ORANGE = Complete (missing content)}\\
+\textcolor{blue}{BLUE = Write new section}\\
+\textcolor{green}{GREEN = Suggestion/alternative}\\
+\textbf{HIGH PRIORITY:}\\
+1. Rewrite Introduction with new research question\\
+2. Add Loss Function Design subsection (3.X) - THIS IS KEY\\
+3. Write Results section with MSE failure + feature-based success\\
+4. Write Discussion framing contributions honestly\\
+\textbf{MEDIUM PRIORITY:}\\
+5. Restructure Related Work around ``two worlds''\\
+6. Complete Abstract with new framing\\
+7. Update Experimental Setup with actual parameters\\
+\textbf{LOW PRIORITY:}\\
+8. Complete numerical integration equations\\
+9. Update keywords\\
+10. Fix small todos throughout
+}
+
+
+
 \begin{abstract}
-  \vspace{4px}\itodo[blue]{Abstract, due 12th Jan}
+  \vspace{4px}\itodo[blue]{REWRITE ABSTRACT with new framing:\\
+  \textbf{Problem:} Simplified neuron models (AdEx) need parameter fitting; traditional methods use derivative-free optimization; differentiable simulators (Jaxley) enable gradient-based methods but don't support discontinuous models.\\
+  \textbf{Gap:} Surrogate gradients (from SNNs) enable differentiation through spikes, but were developed for network weight training, not biophysical parameter estimation.\\
+  \textbf{Contribution:} We bridge these worlds by implementing surrogate gradient-enabled AdEx in Jaxley and investigating what loss functions enable successful parameter fitting.\\
+  \textbf{Finding:} MSE loss fails due to spike timing sensitivity; feature-based losses (Guarino et al.) enable optimization of bulk firing properties.\\
+  \textbf{Implication:} Loss function design is critical when adapting SNN techniques for biophysical parameter estimation.}
 \end{abstract}
 
 \begin{IEEEkeywords}
 JIT-Compilation, Automatic Gradient Descent, GPU-Acceleration, Integrate-and-Fire Model, Simplified Neuron Model
 \end{IEEEkeywords}
+\mtodo[cyan]{UPDATE KEYWORDS: Consider adding ``Surrogate Gradients'', ``Parameter Estimation'', ``Loss Function Design'', ``Differentiable Simulation''. Remove ``GPU-Acceleration'' if that's not a main contribution anymore.}
 
 \section{Introduction}\label{sec:intro}
-\itodo[blue]{Introduction, due 12th Jan}
+\itodo[blue]{REWRITE INTRODUCTION - Structure it as follows:\\
+\textbf{Para 1 - Context:} Neuron models need parameter fitting. Two approaches exist: (1) derivative-free methods (evolutionary algorithms) used traditionally in computational neuroscience, (2) gradient-based methods now possible with differentiable simulators like Jaxley.\\
+\textbf{Para 2 - The Gap:} Jaxley works great for continuous HH-type models, but simplified models (AdEx, LIF) have discontinuous dynamics (hard reset). Surrogate gradients were developed in the SNN/ML community to handle this---but for training network weights on classification tasks, not for biophysical parameter estimation.\\
+\textbf{Para 3 - Research Question:} ``Can surrogate gradient techniques be adapted for gradient-based parameter estimation of simplified neuron models? What loss function design is required?''\\
+\textbf{Para 4 - Contributions:} (1) Implementation of surrogate gradient-enabled AdEx in Jaxley, (2) Investigation of loss function requirements, (3) Finding that feature-based losses work where MSE fails.\\
+\textbf{Para 5 - Paper structure:} Brief roadmap.}
+
+\mtodo[red]{DELETE this old framing about ``performance gains'' - the new question is about \emph{feasibility} and \emph{requirements}, not speed comparison}
 It remains unclear if adapting a Simplified Neuron Model  (e.g. \ac{AdEx} or \ac{LIF}) within \texttt{Jaxley} to allow for automatic differentiation (e.g. by introducing \acp{SG}) performance gains can be achieved.
 This project will try to answer this question.
 
@@ -92,9 +122,9 @@ Even though the number of parameters is significantly reduced compared to bio-ph
 For AdEx to perform as an effective tool, efficient methods for parameter optimizations are essential.
 
 \subsection{Parameter Tuning for Neuron Models}
-A central challenge in neuroscience has been to 'identify the parameters of detailed biophysical models, such that they match physiological measurements at scale' \cite{Deistler2024} in reasonable simulation runtimes.
+A central challenge in neuroscience has been to 'identify the parameters of detailed biophysical models, such that they match physiological measurements at scale' \cite{Deistler2025} in reasonable simulation runtimes.
 The zoo of optimisation techniques is large, spanning from evolutionary algorithms \cite{VanGeit2008} to gradient descent \cite{Jones2024}, however, deciding which algorithm to use may often depend on the underlying properties of the model.
-\texttt{Jaxley} \cite{Deistler2024}, a newly developed framework, uses automatic differentiation to quickly fit parameters of sophisticated biophysical models to experimental data and perform large-scale neuron simulations.
+\texttt{Jaxley} \cite{Deistler2025}, a newly developed framework, uses automatic differentiation to quickly fit parameters of sophisticated biophysical models to experimental data and perform large-scale neuron simulations.
 Specifically, \texttt{Jaxley} allows to simulate multi-compartment models with complex structures (dendrites, axons), cable theory equations and \ac{HH}-type ion channels.
 To perform parameter optimisation, \texttt{Jaxley} uses automatic differentiation (via \texttt{Jax}).
 It shows very promising results, matching or outperforming other state-of-the-art (e.g. genetic algorithms) in performance for small and large neuron models respectively.
@@ -107,9 +137,11 @@ Addressing this issues requires special treatment: surrogate gradients.
 \subsection{Surrogate Gradients}
 \acfp{SG} were developed to adapt spiking neurons (usually using \ac{LIF} neuron models) for training, primarily on classification tasks.
 To fit these models to real data, the typical forward pass - backward pass strategy needed to be enabled.
-Because \\ac{LIF}-type models have a discontinuous derivatives (see reset in equation~\ref{eq:adex3}), automatic differentiation cannot be performed without adjustments.
-To overcome this issue, prior work replaced discontinues (heavyside- function) with continuous (e.g. sigmoid) surrogates, but only for the backward pass \cite{Neftci2019}.
-This work will adapt this idea for \texttt{Jaxley}.
+Because \ac{LIF}-type models have a discontinuous derivatives (see reset in equation~\ref{eq:adex3}), automatic differentiation cannot be performed without adjustments.
+To overcome this issue, prior work replaced the discontinues (heavyside-) functions derivative with a (e.g. sigmoid) surrogate, but only for the backward pass \cite{Neftci2019}.
+For training weights in \acp{SNN}, this performed sufficiently well.
+
+In this work we will bridge these two worlds: combine gradient optimisation using Jaxley for using simplified models in bio-physical neuron simulations.
 
 \section{Related Work}\label{sec:relwork}
 Simplified Neuron Models historically were a necessary evil to deal with the fact that computing resources were too limited to perform large scale brain simulations with sophisticated ion-channel based models.
@@ -120,53 +152,51 @@ A neuron model has to replicate behaviour of a huge variety of neurons.
 In simplified neuron models like \ac{AdEx}, some parameters lack a real (measurable) counterpart.
 Therefore parameters have to be estimated using optimisation techniques.
 Traditionally, a huge variety (from evolutionary strategies to particle swarm optimizations) of approaches were used \cite{VanGeit2008}.
+A very recent paper uses grid search over a feature space, not gradients \cite{Guarino2025}.
 Recently genetic algorithms, multi-state single-agent stochastic search (MSASS) or Teaching-Learning-Based Optimization (TLBO) have been used successfully to tune parameters for the \ac{AdEx} model to real voltage-clamp recordings \cite{Marin2020, Cruz2021}.
 However, these approaches tend to use a lot of computational resources.
-Using automatic differentiation could address this issue.
+
+Hertag et al. \cite{Hertag2011} developed an analytical approximation to the AdEx model to speed up computations.
+Using automatic differentiation could also address this issue.
+Jones et al. \cite{Jones2024} and Deistler2025 et al. \cite{Deistler2025} demonstrated that gradient-based methods can effectively parametrize HH-type models.
+However, they require the inherently differentiable nature of HH-type models.
+Simplified models require additional treatment to benefit from this technique.
 
 \subsection{Parameter Learning using Surrogate Gradients in Spiking Neural Networks}
-\acfp{SG} to enable backward pass computation have been explored in multiple works.
+Previous work explored using surrogate gradients for training weights of \acp{SNN} in classification tasks \cite{Neftci2019, Gerum2021, Perez-Nieves2021}.
 Gerum and Schilling \cite{Gerum2021} explored different surrogates (like sigmoid or esser function) to train a \ac{LIF} based \ac{NN} for image classification tasks.
 The authors used \texttt{Keras} to perform automatic differentiation and backpropagation.
 Perez-Nieves et al. \cite{Perez-Nieves2021} used a sigmoidal surrogate gradient in the backward pass to train a spiking NN in \texttt{PyTorch} to perform a variety of different classification tasks.
-\ac{LIF} models have the disadvantage, that they don't capture complex neuron firing behaviour.
-In contrast, \ac{AdEx} allows for large-scale, realisitic brain simulations \cite{Tesler2024}.
-Regular deep learning tools are not equally equipped to model synaptic connections and dendrite/axon structures which are necessary for realistic brain model behaviour.
-Leveraging the \texttt{Jaxley} framework, we combine modern optimisation techniques with a state-of-the-art neuroscience compute framework.
+However, their work focuses on training network weights on task-based classification tasks.
+
+Recent theoretical work \cite{Gygax2025} clarifies why surrogate gradients succeed despite approximating the true gradient.
+But fitting biophysical parameters to experimental recordings poses a different challenge:
+the loss function must quantify similarity between simulated and recorded spike trains.
+Whether standard choices like mean squared error suffice --- 
+or whether domain-specific alternatives are required --- 
+remains unexplored.
+This work investigates this question.
 
 \subsection{Benchmark Sets for Neuron Models}
 Neuron models are highly specialised and are fit to very specific data.
 Therefore it proves to be difficult to compare models systematically.
-Still, attempts have been made define benchmark sets to test models, e.g. rat cortical pyramidal neurons \cite{Jolivet2008} 
-or more varied data sets \cite{Mohasci2024} containing mixes of surrogate data (data produced by tuned models) and voltage clamp records.
+Jolivet et al. \cite{Jolivet2008} introduce a coincidence factor, which allows to evaluate neuron models.
+We use the concept to evaluate the quality of trained parameters 
 
 This work will try to replicate the model behaviour given by existing implementations \cite{Stimberg2019} using the parameters given by \cite{Naud2008}.
-For benchmarking the optimisation behaviour, I'm currently waiting for data provided by Alex Kozlov. I will know more about this in a week.
-
-%\cite{Kim2025} Novel approach using \ac{ANN} to predict parameters tunings for HH-type models.
-%Once trained, can produce parameters very quickly and pretty accuratley.
-%Requires backpropagation, ergo continuous derivative.
-
-\itodo{Important papers not yet discussed:\\
-\cite{Jones2024} (Using gradient descent for HH)\\
-- Emphasises why gradient descent is a good idea.\\
-\cite{Gygax2025} (Background information on surrogate gradients)\\
-    - Recent theoretical work on why surrogate gradients work\\
-    - Published in Neural Computation (2025), preprint from April 2024\\
-\cite{Zhou2024} (Comprehensive review of surrogate gradient methods)\\
-    - Notes that "only a few aspects of intelligent brains have been applied" - supports your novelty claim\\
-\cite{Hertag2011} (Alternative approach to speed up AdEx fitting)\\
-    - (10× faster)\\
-    - Shows there's demand for faster methods
-}
-\itodo{Replace preprint of Jaxley with new version \cite{Deistler2025}}
+For benchmarking the optimisation behaviour, we will fit the model use voltage traces of \acp{SPN} gained from experiments by Johansson et al. \cite{Johansson2020}.
 
 \section{Methodology}\label{sec:method}
 This work introduces two contributions: firstly, we implement the \ac{AdEx} model within \texttt{Jaxley}, providing both standard and surrogate gradient variants.
 The surrogate implementation can easily adopted to Jaxleys existing simplified models: \ac{LIF} and Izhikevich.
 Secondly, we use \texttt{Jaxley} to perform gradient-based optimisation.
+We investigate two different loss functions:
+\begin{itemize}
+  \item \ac{MSE}
+  \item Guarino et al. \cite{Guarino2025} feature-based loss function.
+\end{itemize}
 Using gradient-based optimisation requires a differentiable loss function.
-As starting point, we use \ac{MSE} which we will later replace by a custom designed error function.
+Therefore we will introduce a gradient version of the feature-based loss function.
 
 \subsection{Integration of Surrogate Gradients into Jaxley}
 \texttt{Jaxley} is built on top of \texttt{JAX} and leverages its automatic differentiation capabilities for gradient-based parameter optimisation.
@@ -222,7 +252,7 @@ to a continuous, differentiable form:
 where $s = \tilde{H}(v - v_{\text{th}})$ is the surrogate spike indicator.
 This formulation allows gradients to flow through the reset operation.
 
-We apply this approach to the existing \ac{LIF} (\texttt{FireSurrogate}) and Izhikevich models in \texttt{Jaxley}, as well as to the newly implemented \ac{AdEx} model (\texttt{AdExSurrogate}).
+This approach can easily be applied to the existing \ac{LIF} (\texttt{FireSurrogate}) and Izhikevich models in \texttt{Jaxley}, not only to the newly implemented \ac{AdEx} model (\texttt{AdExSurrogate}).
 
 \subsection{AdEx Model Implementation}\label{sec:adex_impl}
 We implement the \ac{AdEx} model as a \texttt{Jaxley} channel, following the formulation by Brette and Gerstner \cite{Brette2005} (see Equations~\ref{eq:adex1}--\ref{eq:adex3}).
@@ -237,7 +267,9 @@ Equation~\ref{eq:adex2} is linear in $w$, allowing the use of exponential Euler 
 \begin{equation}
   todo...
 \end{equation}
-\itodo{w equation + explanation}
+\itodo[orange]{COMPLETE: Add exponential Euler formula for w:\\
+$w(t+\Delta t) = w(t) \cdot e^{-\Delta t / \tau_w} + a(V - E_L)(1 - e^{-\Delta t / \tau_w})$\\
+Explain: exact solution for linear ODE, more stable than forward Euler}
 
 \textbf{Membrane potential $V$:}
 The exponential term in Equation~\ref{eq:adex1} makes this equation nonlinear, requiring forward Euler integration:
@@ -293,6 +325,7 @@ To verify the correctness of our \ac{AdEx} implementation, we compare simulation
 
 \subsubsection{Comparison Setup}
 Both simulators are configured identically:
+\begin{itemize}
     \item Time step: $\Delta t = 0.025$ ms
     \item Simulation duration: 600 ms
     \item Initial conditions: $V(0) = V_r$, $w(0) = 0$
@@ -332,12 +365,42 @@ The dataset contains voltage traces from four distinct striatal neuron types, re
 Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based on experimental measurements where available.
 \itodo{Will probably change depending on how experiments go}
 
-\textbf{Loss function:} 
-MSE?
+\subsection{Loss Function}
+\subsubsection{MSE}
+\begin{itemize}
+  \item MSE on voltage traces seems natural but fails for spiking neurons
+  \item  Problem: small timing differences create huge MSE even if spike patterns are similar
+  \item The loss landscape is non-convex; gradients don't point toward good solutions
+  \item Show equation, explain why it fails
+\end{itemize}
+\subsubsection{Feature-Based Loss}
+\begin{itemize}
+  \item Alternative: extract electrophysiological features, compare features instead of traces
+  \item Based on Guarino et al. cite
+  \item Features: spike timing (t\_first, t\_second, t\_last), ISI (inverse first/last ISI), firing frequency, v\_stim\_end
+  \item Loss = weighted sum of relative errors: $|f_{sim} - f_{exp}| / |f_{exp}|$
+  \item Missing feature penalty: if exp has spike but sim doesn't, add penalty
+\end{itemize}
+\subsubsection{Differentiable Feature-Based Loss}
+\begin{itemize}
+  \item Challenge: feature extraction typically uses hard thresholds (non-differentiable)
+  \item Our contribution: soft/differentiable versions of all features
+  \item Soft spike count using surrogate spike indicator
+  \item Soft spike timing using weighted time averages
+  \item Temperature parameter controls sharpness vs gradient trade-off
+\end{itemize}
+\subsubsection{Multi-Trace Loss}
+\begin{itemize}
+  \item Single trace: many parameter combinations can produce similar output
+  \item Multi-trace: same parameters must match across different current injection levels
+  \item Provides much stronger constraints, better generalization
+\end{itemize}
+
 \begin{equation}
     \mathcal{L}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \left( V_{\text{sim}}(t; \theta) - V_{\text{exp}}(t) \right)^2
 \end{equation}
 where $\theta$ denotes the trainable parameters.
+\mtodo[red]{DELETE these old todos, replace with new structure above}
 \mtodo{Consider spike-timing based loss as alternative, I even assume this is way to go.}
 \mtodo{Check what other ppl are doing}
 
@@ -345,6 +408,9 @@ where $\theta$ denotes the trainable parameters.
 \mtodo{Specify learning rate and number of iterations after experiments}
 
 \textbf{Initialisation:} Parameters are initialised within physiologically plausible ranges based on literature values \cite{Naud2008}.
+
+\itodo[blue]{Differentiable Guarino et al.}
+Guarino et al. \cite{Guarino2025},
 
 \subsubsection{Evaluation Metrics}
 We assess optimisation performance through:
@@ -354,17 +420,86 @@ We assess optimisation performance through:
     \item Spike timing accuracy (if applicable)
     \item Convergence behaviour (loss vs.\ iteration)
 \end{itemize}
+\itodo[blue]{ADD: Coincidence Factor $\Gamma$ (Jolivet et al. 2008) as quantitative evaluation metric:\\
+\textbf{3.X.Y Coincidence Factor for Spike Train Evaluation}\\
+- The coincidence factor $\Gamma$ measures spike timing prediction quality, normalized by chance level\\
+- Formula: $\Gamma = \frac{N_{coinc} - \langle N_{coinc} \rangle}{0.5(N_{data} + N_{model})} \cdot \frac{1}{1 - 2f\Delta}$\\
+- $N_{coinc}$: coincidences within $\pm\Delta$ (default 2ms), $f$: model firing rate\\
+- $\Gamma = 1$: perfect prediction, $\Gamma = 0$: chance level, $\Gamma < 0$: worse than chance\\
+- Reference values from Jolivet et al.: well-fitted aEIF achieves $\Gamma_A \approx 0.82-0.83$\\
+- Use to compare: (1) our fitted parameters vs (2) well-fitted reference parameters\\
+- Implementation complete in \texttt{coincidence\_factor.py}}
 
-As a baseline we will compare our implementation with Guarino et al. \cite{Guarino2025}, who used grid search not on voltage traces but on extracted feature sets of said traces.\mtodo{This is gonna be so much work, might be unfeasible}
+
+\mtodo[green]{REFRAME: You're not comparing \emph{against} Guarino as baseline.
+You're \emph{adapting} their feature-based approach for gradient-based optimization.
+The comparison is MSE vs feature-based, not your method vs Guarino's grid search.}
 
 \section{Experimental Setup}\label{sec:expsetup}
-\itodo[blue]{Experimental Setup, due 12th Jan}
+All experiments were conducted on a 2020 Apple Silicon Mac.
+The implementation is built on Jaxley version 0.12.0.
+Comparison were performed using the Brian2 simulator 2.10.1.
+
+\itodo[blue]{Experimental Setup - include:\\
+- Dataset description (striatal neurons)\\
+- Simulation parameters (dt, duration)\\
+- Training setup (Adam, learning rate, epochs, gradient clipping)\\
+- Hardware (CPU/GPU - note that GPU didn't help, this is a finding)\\
+- Which parameters are trainable vs fixed}
+
 \section{Results}\label{sec:results}
-\itodo[blue]{Results, due 12th Jan}
+\itodo[blue]{RESULTS - Structure as follows:\\
+\textbf{5.1 Implementation Verification}\\
+- Brian2 comparison figure (you have this)\\
+- Show tonic, adaptation, original parameter configs\\
+- Conclude: implementation is correct\\
+\textbf{5.2 Gradient Flow Verification}\\
+- Show that gradients are non-zero and flow through spike events\\
+- Reference your test\_guarino\_features.py results (all 7 tests pass)\\
+- This proves surrogate gradients work in this context\\
+\textbf{5.3 MSE Loss Failure}\\
+- Show training with MSE doesn't converge / converges to wrong solution\\
+- Visualize: loss curve, final voltage trace comparison\\
+- Explain why: timing sensitivity, non-convex landscape\\
+\textbf{5.4 Feature-Based Loss Success}\\
+- Show training with Guarino features works\\
+- Your results: spike count matches (13 vs 13), firing freq matches (26 Hz)\\
+- Limitation: spike timing still needs tuning (35ms vs 22ms)\\
+- Multi-trace results if available\\
+\textbf{5.5 Quantitative Summary}\\
+- Table comparing MSE vs Feature-based on key metrics\\
+- Spike count error, frequency error, timing error\\
+\textbf{5.6 Coincidence Factor Evaluation}\\
+- Report $\Gamma$ values for fitted parameters vs experimental data\\
+- Compare against reference: well-fitted aEIF achieves $\Gamma_A \approx 0.82-0.83$\\
+- Use $\Delta = 2$ms coincidence window (standard from Jolivet et al.)}
+
 \section{Discussion and Conclusion}\label{sec:discussion}
-\itodo[blue]{Discussion, due 12th Jan}
+\itodo[blue]{DISCUSSION - Structure as follows:\\
+\textbf{6.1 Key Findings}\\
+- Surrogate gradients successfully enable differentiation through spikes\\
+- MSE loss is fundamentally unsuitable for spike train matching\\
+- Feature-based loss enables optimization of bulk firing properties\\
+- Spike timing precision remains challenging\\
+\textbf{6.2 Implications}\\
+- Loss function design is critical when bridging SNN techniques to biophysical fitting\\
+- Can't just transfer SNN methods directly; need domain-specific adaptations\\
+- Feature-based losses from computational neuroscience (Guarino, eFEL) are key\\
+\textbf{6.3 Limitations}\\
+- Spike timing not perfectly matched (honest about this)\\
+- Single neuron type tested\\
+- No runtime comparison (because convergence is the primary concern)\\
+\textbf{6.4 Future Work}\\
+- Better spike timing losses\\
+- More neuron types\\
+- Comparison with evolutionary methods once optimization is reliable\\
+\textbf{6.5 Conclusion}\\
+- We bridged two worlds: SNN surrogate gradients + biophysical parameter fitting\\
+- Key insight: loss function design matters more than the optimization algorithm\\
+- Contribution: differentiable AdEx in Jaxley + understanding of loss requirements}
 \section*{Acknowledgment}\label{sec:ack}
-\itodo[blue]{Acknowledgment, due 12th Jan}
+I want to thank Alexander Kozlov for suggesting this topic and providing valuable insight and resources.
+I also want to thank Johan Eklund for my supervision.
 
 % -- References
 \bibliography{bibliography.bib}
@@ -375,12 +510,15 @@ As a baseline we will compare our implementation with Guarino et al. \cite{Guari
 \acrodef{SG}{Surrogate Gradient}
 \acrodef{AdEx}{Adaptive Exponential Integrate-and-Fire}
 \acrodef{HH}{Hodgkin-Huxley}
+\acrodef{SPN}{Striatal Projection Neurons}
 
 \acrodef{ML}{Machine Learning}
 \acrodef{NN}{Neural Network}
 \acrodef{ANN}{Artificial Neural Network}
 \acrodef{CNN}{Convolutional Neural Network}
 \acrodef{RNN}{Recurrent Neural Network}
+\acrodef{SNN}{Spiking Neural Network}
 
+\acrodef{MSE}{Mean Squared Error}
 
 \end{document}

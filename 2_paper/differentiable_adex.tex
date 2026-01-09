@@ -18,7 +18,6 @@
 \newcommand{\itodo}[2][yellow]{\vspace{3pt}\todo[inline, color=#1!40]{#2}}
 \newcommand{\mtodo}[2][orange]{\todo[color=#1!40]{#2}}
 
-
 \begin{document}
 
 \title{Between Two Worlds: Surrogate Gradients for Gradient-Based Parameter Estimation in Simplified Neuron Models}
@@ -53,8 +52,6 @@ pmayer@kth.se}
 10. Fix small todos throughout
 }
 
-
-
 \begin{abstract}
   \vspace{4px}\itodo[blue]{REWRITE ABSTRACT with new framing:\\
   \textbf{Problem:} Simplified neuron models (AdEx) need parameter fitting; traditional methods use derivative-free optimization; differentiable simulators (Jaxley) enable gradient-based methods but don't support discontinuous models.\\
@@ -65,9 +62,8 @@ pmayer@kth.se}
 \end{abstract}
 
 \begin{IEEEkeywords}
-JIT-Compilation, Automatic Gradient Descent, GPU-Acceleration, Integrate-and-Fire Model, Simplified Neuron Model
+Automatic Gradient Descent, Integrate-and-Fire Model, Simplified Neuron Model, Surrogate Gradients, Parameter Estimation
 \end{IEEEkeywords}
-\mtodo[cyan]{UPDATE KEYWORDS: Consider adding ``Surrogate Gradients'', ``Parameter Estimation'', ``Loss Function Design'', ``Differentiable Simulation''. Remove ``GPU-Acceleration'' if that's not a main contribution anymore.}
 
 \section{Introduction}\label{sec:intro}
 \itodo[blue]{REWRITE INTRODUCTION - Structure it as follows:\\
@@ -77,9 +73,13 @@ JIT-Compilation, Automatic Gradient Descent, GPU-Acceleration, Integrate-and-Fir
 \textbf{Para 4 - Contributions:} (1) Implementation of surrogate gradient-enabled AdEx in Jaxley, (2) Investigation of loss function requirements, (3) Finding that feature-based losses work where MSE fails.\\
 \textbf{Para 5 - Paper structure:} Brief roadmap.}
 
-\mtodo[red]{DELETE this old framing about ``performance gains'' - the new question is about \emph{feasibility} and \emph{requirements}, not speed comparison}
-It remains unclear if adapting a Simplified Neuron Model  (e.g. \ac{AdEx} or \ac{LIF}) within \texttt{Jaxley} to allow for automatic differentiation (e.g. by introducing \acp{SG}) performance gains can be achieved.
-This project will try to answer this question.
+Ideas:
+\begin{itemize}
+  \item Talk about vision of simulating a whole brain (what Alex mentioned in my presentation)
+  \item Say that over the last years HH were the shit, but now with the idea of simulating a whole brain simplified models have a comeback
+  \item Cool innovation comes form AI ppl -> interesting mathematical concepts, they even revolutionized gpu computing
+  \item Use AI tools for bio-physical simulations
+\end{itemize}
 
 \section{Background}\label{sec:background}
 \subsection{Neuron Models}
@@ -314,11 +314,16 @@ Detection threshold & $v_{\text{threshold}}$ & 0 & mV \\
 Adaptation time constant & $\tau_w$ & 30 & ms \\
 Subthreshold adaptation & $a$ & 2 & nS \\
 Spike-triggered adaptation & $b$ & 0 & pA \\
+Stimulation current & $I$ & 500 & pA\\
 \hline
 \end{tabular}
 \end{table}
 
-\itodo{Include necessary changes made to cell morphology to make experiments work.\\Explain that jaxley uses different assumptions than brian2.}
+AdEx is defined using absolute capacitance ($pF$).
+However, Jaxley is targeted at bio-physical HH-type simulations, and therefore works with cell morphology and gemoetries.
+It therefore expects specific capacitance ($\mu F/cm^2$).
+To circumvent this problem, we compute a fictitious cylindrical geometries whose surface area yields the desired total capacitance assuming jaxleys standard specific capacitance ($1 \mu F/cm^2$).
+This scales injected currents to maintain correct dynamics.
 
 \subsection{Implementation Verification}\label{sec:verification}
 To verify the correctness of our \ac{AdEx} implementation, we compare simulation outputs against Brian2 \cite{Stimberg2019}, a widely-used reference simulator for spiking neural networks.
@@ -336,15 +341,37 @@ We evaluate three parameter configurations from Naud et al.\ \cite{Naud2008} tha
 
 \textbf{Tonic spiking}:\\
 Regular spiking without spike-frequency adaptation, serving as a baseline case.
-\itodo{include right parameters here}
+The parameters are the default parameters (see \ref{tab:adex_params}).
 
 \textbf{Adaptation}:\\
 Strong spike-triggered adaptation with slow decay, producing decreasing firing rates over time.
-\itodo{include right parameters here}
+The parameters used are
+$C_m = 200$,
+$g_L = 12$,
+$E_L = -70$,
+$v_T = -50$,
+$\Delta_T = 2$,
+$v_r = -58$,
+$v_{\text{threshold}} = 0$,
+$\tau_w = 300$,
+$a = 2$,
+$b = 60$,
+$I = 500$.
 
 \textbf{Original parameters} \cite{Brette2005}:\\
 The original parameter set from Brette and Gerstner, demonstrating combined adaptation mechanisms.
-\itodo{include right parameters here}
+The parameters used are
+$C_m = 281$,
+$g_L = 30$,
+$E_L = -70.6$,
+$v_T = -50.4$,
+$\Delta_T = 2$,
+$v_r = -70.6$,
+$v_{\text{threshold}} = 20$,
+$\tau_w = 144$,
+$a = 4$,
+$b = 80.5$,
+$I = 2500$.
 
 \subsubsection{Comparison Metrics}
 We assess implementation correctness through:
@@ -361,12 +388,13 @@ The dataset contains voltage traces from four distinct striatal neuron types, re
 \mtodo{Specify which 4 neuron types once data is confirmed}
 
 \subsubsection{Optimisation Setup}
-\textbf{Trainable parameters:} We optimise a subset of \ac{AdEx} parameters that lack direct physiological measurements: $\{a, b, \tau_w, V_T, \Delta_T\}$.
+We optimise a subset of \ac{AdEx} parameters that lack direct physiological measurements: $\{a, b, \tau_w, V_T, \Delta_T\}$.\mtodo[red]{Fix this! This is wrong.}
 Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based on experimental measurements where available.
-\itodo{Will probably change depending on how experiments go}
 
-\subsection{Loss Function}
+
+\subsection{Loss Function}\mtodo[orange]{Should this be a subsection or subsubsection?}
 \subsubsection{MSE}
+\itodo[blue]{write MSE section}
 \begin{itemize}
   \item MSE on voltage traces seems natural but fails for spiking neurons
   \item  Problem: small timing differences create huge MSE even if spike patterns are similar
@@ -374,6 +402,7 @@ Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based o
   \item Show equation, explain why it fails
 \end{itemize}
 \subsubsection{Feature-Based Loss}
+\itodo[blue]{write feature-based loss section}
 \begin{itemize}
   \item Alternative: extract electrophysiological features, compare features instead of traces
   \item Based on Guarino et al. cite
@@ -382,6 +411,7 @@ Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based o
   \item Missing feature penalty: if exp has spike but sim doesn't, add penalty
 \end{itemize}
 \subsubsection{Differentiable Feature-Based Loss}
+\itodo[blue]{write feature-based loss section}
 \begin{itemize}
   \item Challenge: feature extraction typically uses hard thresholds (non-differentiable)
   \item Our contribution: soft/differentiable versions of all features
@@ -390,6 +420,7 @@ Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based o
   \item Temperature parameter controls sharpness vs gradient trade-off
 \end{itemize}
 \subsubsection{Multi-Trace Loss}
+\itodo[blue]{write feature-based loss section}
 \begin{itemize}
   \item Single trace: many parameter combinations can produce similar output
   \item Multi-trace: same parameters must match across different current injection levels

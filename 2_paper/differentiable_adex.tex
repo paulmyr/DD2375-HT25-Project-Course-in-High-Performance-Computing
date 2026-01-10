@@ -4,6 +4,7 @@
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
+\usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{textcomp}
@@ -213,7 +214,7 @@ The derivative of the Heavyside function is zero almost everywhere (and undefine
 \begin{equation}
     \frac{\partial H}{\partial v} = 0 \quad \text{for } v \neq v_{\text{th}}
 \end{equation}
-This causes gradients to vanish during backpropagation through spike events, which prevents gradient-based optimisation from working.
+This causes gradients to vanish during back-propagation through spike events, which prevents gradient-based optimisation from working.
 
 \subsubsection{Surrogate Gradient Approach}
 To overcome this limitation, we employ surrogate gradients \cite{Neftci2019}: the forward pass uses the original Heavyside function to maintain correct spike dynamics, while the backward pass substitutes the function with a surrogate.
@@ -241,7 +242,7 @@ All three surrogates are centred at the threshold ($x = v - v_{\text{th}}$).
 The hyperparameter $\beta$ controls the sharpness: higher values produce steeper gradients at the threshold, while lower values spread the gradient over a wider voltage ranges.
 
 \subsubsection{Implementation Details}
-To ensure differentiability through the reset mechanism, we reformulate the conditional reset from a discrete selection:
+We reformulate the conditional reset from a discrete selection:
 \begin{equation}
     v_{\text{new}} = \begin{cases} v_{\text{reset}} & \text{if spike} \\ v & \text{otherwise} \end{cases}
 \end{equation}
@@ -249,10 +250,11 @@ to a continuous, differentiable form:
 \begin{equation}
     v_{\text{new}} = s \cdot v_{\text{reset}} + (1 - s) \cdot v
 \end{equation}
-where $s = \tilde{H}(v - v_{\text{th}})$ is the surrogate spike indicator.
+where $s = \tilde{H}(v - v_{\text{th}})$ is the surrogate spike indicator, to ensure differentiability through the reset mechanism.
 This formulation allows gradients to flow through the reset operation.
 
-This approach can easily be applied to the existing \ac{LIF} (\texttt{FireSurrogate}) and Izhikevich models in \texttt{Jaxley}, not only to the newly implemented \ac{AdEx} model (\texttt{AdExSurrogate}).
+This approach can easily be applied to the existing \ac{LIF} (\texttt{Fire\-Surrogate}) and Izhikevich models in \texttt{Jax\-ley},
+not only to the newly implemented \ac{AdEx} model (\texttt{AdEx\-Surro\-gate}).
 
 \subsection{AdEx Model Implementation}\label{sec:adex_impl}
 We implement the \ac{AdEx} model as a \texttt{Jaxley} channel, following the formulation by Brette and Gerstner \cite{Brette2005} (see Equations~\ref{eq:adex1}--\ref{eq:adex3}).
@@ -295,14 +297,14 @@ where $s: V\rightarrow [0,1]$ is the surrogate of the heavyside function.
 Table~\ref{tab:adex_params} summarises the \ac{AdEx} parameters and their default values.
 Parameters without direct physiological counterparts (e.g., $a$, $b$, $\tau_w$) are primary targets for optimisation.
 
-\begin{table}[h]
+\begin{table}[t]
 \centering
 \caption{\ac{AdEx} model parameters and default values.}
 \label{tab:adex_params}
 \begin{tabular}{llll}
-\hline
+\toprule
 \textbf{Parameter} & \textbf{Symbol} & \textbf{Default} & \textbf{Unit} \\
-\hline
+\midrule
 Membrane capacitance & $C$ & 200 & pF \\
 Leak conductance & $g_L$ & 10 & nS \\
 Leak reversal & $E_L$ & -70 & mV \\
@@ -314,7 +316,7 @@ Adaptation time constant & $\tau_w$ & 30 & ms \\
 Subthreshold adaptation & $a$ & 2 & nS \\
 Spike-triggered adaptation & $b$ & 0 & pA \\
 Stimulation current & $I$ & 500 & pA\\
-\hline
+\bottomrule
 \end{tabular}
 \end{table}
 
@@ -400,9 +402,8 @@ To evaluate the effectiveness of gradient-based optimisation with surrogate grad
 
 As training data, we used voltage recordings from mouse striatal neurons given by \cite{Johansson2020}.
 For now we only used a single recording. 
-The data can be found in the cell folder \texttt{mCP-dspn-e150917\_c6\_D1-manimal\_1\_n24\_04102017\_cel1}:
-\texttt{ECBL\_IDthresh\_ch4\_553.dat} (stimulation) and
-\texttt{ECBL\_IDthresh\_ch5\_553.dat} (cell response)
+\footnote{The data can be found in the cell folder \texttt{mCP-dspn-e150917\_c\-6\_D1-manimal\_1\_n24\_04102017\_cel1/}\texttt{ECBL\_IDthresh\_ch\-4\_553.dat} (stimulation) and
+\texttt{ECBL\_IDthresh\_ch5\_553.dat} (cell response)}
 
 As simulation parameters we used \itodo[red]{important: finish this}
 
@@ -450,6 +451,12 @@ Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based o
 
 \subsection{Loss Function}\mtodo[orange]{Should this be a subsection or subsubsection?}
 \subsubsection{MSE}
+The \ac{MSE}-Loss is defined as 
+\begin{equation}\label{eq:MSE}
+    \mathcal{L}_{\text{MSE}}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \left( V_{\text{sim}}(t; \theta) - V_{\text{exp}}(t) \right)^2,
+\end{equation}
+where $\theta$ denotes the trainable parameters.
+
 \itodo[blue]{write MSE section}
 \begin{itemize}
   \item MSE on voltage traces seems natural but fails for spiking neurons
@@ -483,10 +490,6 @@ Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based o
   \item Provides much stronger constraints, better generalization
 \end{itemize}
 
-\begin{equation}
-    \mathcal{L}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \left( V_{\text{sim}}(t; \theta) - V_{\text{exp}}(t) \right)^2
-\end{equation}
-where $\theta$ denotes the trainable parameters.
 \mtodo[red]{DELETE these old todos, replace with new structure above}
 \mtodo{Consider spike-timing based loss as alternative, I even assume this is way to go.}
 \mtodo{Check what other ppl are doing}
@@ -530,16 +533,101 @@ Comparison were performed using the Brian2 simulator 2.10.1.
 Full list of software versions is found in the \href{https://github.com/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/blob/master/requirements.txt}{requirements.txt}
 
 \section{Results}\label{sec:results}
+\subsection{AdEx verification}
+Running verification\footnote{Test can be run in \href{https://colab.research.google.com/github/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/blob/master/5_evaluation/notebooks/jaxley_test_adex.ipynb}{Google Colab}} against \texttt{Brian2} gave the following results:
+Figure~\ref{fig:brian_comparison} demonstrates almost perfect overlap.
+The biggest differences are in spike magnitude.
+We note that both brian2 and jaxley results do not cross the detection threshold in the recording.
+This is an artefact due to how we record the simulated potentials.
+The integration step is computed and then the new voltage value is stored.
+When the integrated value crosses the threshold, the voltages are reset before the value is recorded, meaning in this all voltage recordings are below $v_{\text{threshold}}$.
 
+We measured the difference between spike timings.
+Table~\ref{tab:spike_comparison} shows the measured results.
+We identify over different spiking behaviour, both simulations produced identical amount of spikes.
+The measured maximum timing differences between spikes was $<1$ms for all runs, the mean difference between spikes was $<0.5ms$.
+Given the sensitivity of the exponential spiking initiation zone and the fact that different numerical integration was used for the adaption current,
+we were satisfied with the similarity of the results and concluded that the implementation is correct.
 
+\begin{table}[t]
+\centering
+\caption{Spike timing comparison between Jaxley and Brian2 implementations.}
+\label{tab:spike_comparison}
+\begin{tabular}{lccc}
+\toprule
+ & Tonic & Adaptation & Original \\
+\midrule
+Spike count & 52 & 10 & 64 \\
+Max timing diff.\ (ms) & 0.54 & 0.58 & 0.82 \\
+Mean timing diff.\ (ms) & 0.28 & 0.27 & 0.42 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Surrogate Gradient verification}
+To verify the surrogate gradient implementation we first computed the gradient of a simple loss function (number of spikes) after stimulating the cell.
+The produced gradients are zero for the default implementation and non-zero for the surrogate model.
+We visualized (see figure~\ref{fig:surrogate_gradients_comparison}) the backward pass to verify compare different surrogate types (Sigmoid, Exponential, SuperSpike) --- all peak around threshold of the heavyside-function.
+
+\begin{figure}[t]
+  \begin{center}
+    \includegraphics[width=\columnwidth]{figures/surrogate_gradients_comparison.pdf}
+  \end{center}
+  \caption{Left: heavyside function in the forward pass. Right: different surrogate gradients, all centred around the threshold.}\label{fig:surrogate_gradients_comparison}
+\end{figure}
+
+\subsection{Parameter Estimation using MSE}
+  The natural first approach for parameter estimation is to minimize the \ac{MSE}\ref{eq:MSE} between simulated and experimental voltage traces.
+  However, our experiments indicated that this loss function is fundamentally unsuitable for spiking neurons.
+  A core problem is \emph{spike timing sensitivity}: even when simulated and experimental traces exhibit similar firing patterns, small temporal misalignments between spikes create disproportionately large MSE values.
+  Consider two traces with identical spike counts and frequencies, but with spikes offset by 2\,ms.
+  During each spike, the voltage difference can exceed 100\,mV (from resting potential to spike peak), resulting in enormous per-sample errors that dominate the loss.
+  This timing sensitivity manifests in a highly non-convex loss landscape.
+  The gradient at any point reflects primarily the instantaneous voltage mismatch rather than structural similarity of the spike trains.
+  Consequently, gradient descent steps often move parameters in directions that reduce voltage error at specific time points while disrupting the overall firing pattern.
+
+  Additionally, perfekt spike time matchings are punished.
+  This is because \ac{AdEx} values are reset before the jaxley simulator records the voltage trace --- if experimental data and simulation data would spike at the exact same time, 
+  the loss would be huge (AdEx is at $V_{r}$, experiment is at $V_{\text{peak}}$).
+  This enforces a mismatch between spike timing and simulation.
+
+  We attempted MSE-based optimization using the same experimental recordings and training setup described in Section~\ref{sec:param_opt}.
+  The optimizer converged to parameter configurations that minimized voltage deviation during subthreshold periods but failed to produce correct spiking behaviour.
+  In many runs, the model either stopped spiking entirely (eliminating spike-related MSE contributions) or produced spike patterns uncorrelated with the experimental data.
+
+  This leads us to believe that MSE loss, while theoretically sound for continuous signals, is ill-suited for discrete event (spike) matching.
+  The loss function must capture \emph{what} features matter rather than demanding exact sample-by-sample voltage alignment.
+
+\subsection{Parameter Estimation using Feature-Based Loss}
+\subsection{Coincidence Factor}
+To evaluate the performance of the two loss functions, we simulated 
+
+We evaluated spike timing prediction quality using the coincidence factor $\Gamma$ from Jolivet et al.~\cite{Jolivet2008}, with coincidence window $\Delta = 2$\,ms.
+Table~\ref{tab:coincidence} compares different parameter configurations.
+
+\begin{table}[t]
+\centering
+\caption{Coincidence factor $\Gamma$ for different parameter sets. Reference: well-fitted aEIF achieves $\Gamma \approx 0.82$--$0.83$~\cite{Jolivet2008}.}
+\label{tab:coincidence}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Parameters} & $\Gamma$ & $N_{\text{coinc}}$ & $N_{\text{exp}}$ & $N_{\text{sim}}$ \\
+\midrule
+Initial (untrained) & --- & --- & --- & --- \\
+MSE loss & --- & --- & --- & --- \\
+Guarino loss & --- & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+\mtodo{Run evaluate\_coincidence.py and fill in actual values}
+
+\mtodo{Add bar chart figure comparing $\Gamma$ values with reference lines at 0.82 (well-fitted) and 0 (chance)}
+
+The trained parameters achieved $\Gamma = XXX$, indicating [GOOD/MODERATE/POOR] spike timing prediction compared to the Jolivet et al.\ benchmark of $\Gamma \approx 0.82$ for well-fitted models.
+\subsection{Summary}
 
 \itodo[blue]{RESULTS - Structure as follows:\\
-\textbf{5.1 Implementation Verification}\\
-- Brian2 comparison figure (you have this)\\
-- Show tonic, adaptation, original parameter configs\\
-- Conclude: implementation is correct\\
 \textbf{5.2 Gradient Flow Verification}\\
-- Show that gradients are non-zero and flow through spike events\\
 - Reference your test\_guarino\_features.py results (all 7 tests pass)\\
 - This proves surrogate gradients work in this context\\
 \textbf{5.3 MSE Loss Failure}\\
@@ -590,6 +678,13 @@ I also want to thank Johan Eklund for my supervision.
 \bibliography{bibliography.bib}
 \bibliographystyle{IEEEtran}
 
+\section*{AI assistance disclosure}\label{sec:ai}
+AI assistance was used for this project.
+All prompts were sent to Anthropics Opus 4.5 via Claude Code.
+Usage mainly included writing feedback, code refactoring, documentation of code and plotting scripts.
+It also included transcribing lists of values into tables (e.g. Table \ref{tab:adex_params}) from code or lists of values.
+Transcripts of prompts can be found \href{}{here}.
+All results were validated and double checked by hand.
 
 \acrodef{LIF}{Leaky Integrate-and-Fire}
 \acrodef{SG}{Surrogate Gradient}

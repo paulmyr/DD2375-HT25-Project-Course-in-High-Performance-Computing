@@ -1,44 +1,3 @@
-NAUD_PARAMETERS = {
-    'tonic': {
-        'C_m': 200,      # pF - Membrane capacitance
-        'g_L': 10,       # nS - Leak conductance
-        'E_L': -70,      # mV - Leak reversal potential
-        'v_T': -50,      # mV - Spike threshold
-        'delta_T': 2,    # mV - Spike slope factor
-        'v_reset': -58,  # mV - Reset potential (NOT -70!)
-        'v_threshold': 0,  # mV - Detection threshold for spike cutoff
-        'tau_w': 30,     # ms - Adaptation time constant
-        'a': 2,          # nS - Subthreshold adaptation
-        'b': 0,          # pA - Spike-triggered adaptation (none for tonic)
-        'I': 500,        # pA - Injected Current
-    },
-    'adaptation': {
-        'C_m': 200,      # pF
-        'g_L': 12,       # nS - Slightly higher leak
-        'E_L': -70,      # mV
-        'v_T': -50,      # mV
-        'delta_T': 2,    # mV
-        'v_reset': -58,  # mV
-        'v_threshold': 0,  # mV
-        'tau_w': 300,    # ms - 10x slower adaptation!
-        'a': 2,          # nS
-        'b': 60,         # pA - Strong spike-triggered adaptation
-        'I': 500,        # pA - Injected Current
-    },
-    'original': {          # Parameters from the 2005 Brette et al. paper
-        'C_m': 281,        # pF
-        'g_L': 30,         # nS - Slightly higher leak
-        'E_L': -70.6,      # mV
-        'v_T': -50.4,      # mV
-        'delta_T': 2,      # mV
-        'v_reset': -70.6,  # mV
-        'v_threshold': 20, # mV
-        'tau_w': 144,      # ms - 10x slower adaptation!
-        'a': 4,            # nS
-        'b': 80.5,         # pA - Strong spike-triggered adaptation
-        'I': 2500,         # pA - Injected Current
-    },
-}
 
 import jax
 from jax import config
@@ -50,37 +9,42 @@ import optax
 import jaxley as jx
 from jaxley.channels import AdEx, AdExSurrogate
 
+from brian2 import *
+
 import matplotlib.pyplot as plt
 import time
 
+from parameters import NAUD_PARAMETERS
+from plotting_scripts import plot_comparison, plot_responses, plot_combined_comparison, plot_combined_overlay_only
 
-def plot_responses(responses, expdata=[], junction_potential=0, figsize=None, fig=None, ax=None):
-    if not ax:
-        fig, axes = plt.subplots(len(responses), figsize=figsize)
-    for index, (name, response) in enumerate(sorted(responses.items())):
-        axis = axes[index] if not ax else ax
-        if name in expdata:
-            data = np.loadtxt(expdata[name])
-            time = data[:,0]
-            voltage = data[:,1] - junction_potential
-            axis.plot(time, voltage, color='lightgrey')
-        axis.plot(response['time'], response['voltage'])
-        if not ax:
-            axis.set_title(name, size='small')
-    fig.tight_layout()
+
 
 def geometry_for_capacitance(C_pF, specific_capacitance=1.0):
     """
     Calculate cylindrical cell geometry to achieve target total capacitance.
-    I'm not exaclty sure where exactly jaxley uses cell radius and length
-    but if this is not adjusted, everything brakes...
+
+    Assumes standard specific membrane capacitance of 1.0 μF/cm².
+
+    Args:
+        C_pF: Target total membrane capacitance in picofarads (pF)
+
+    Returns:
+        radius_um: Cylinder radius in micrometers
+        length_um: Cylinder length in micrometers
+        area_cm2: Membrane surface area in cm²
+
+    Example:
+        For C_m = 200 pF (typical AdEx value):
+        → area = 200e-6 / 1.0 = 2e-4 cm²
+        → radius ≈ 2.83 μm, length ≈ 8.88 μm
     """
     C_uF = C_pF * 1e-6
     area_cm2 = C_uF / specific_capacitance
-    radius_cm = jnp.sqrt(area_cm2 / (6.28 * jnp.pi))
+    radius_cm = jnp.sqrt(area_cm2 / (2 * jnp.pi**2))
     radius_um = radius_cm * 1e4
     length_um = 3.14 * radius_um
     return radius_um, length_um, area_cm2
+
 
 def run_jaxley_adex(params, dt_ms=0.025, duration_ms=400.0, t_max_ms=600.0):
     """
@@ -149,21 +113,164 @@ def run_jaxley_adex(params, dt_ms=0.025, duration_ms=400.0, t_max_ms=600.0):
     return time_array, voltage_array, w_array, spike_times
 
 
+def run_brian2_adex(params, dt_ms=0.025, duration_ms=600.0, t_max_ms=600.0):
+    """
+    Run AdEx simulation using Brian2.
+    Follows https://brian2.readthedocs.io/en/latest/examples/frompapers.Naud_et_al_2008_adex_firing_patterns.html
 
-def plot_responses(responses, expdata=[], junction_potential=0, figsize=None, fig=None, ax=None):
-    if not ax:
-        fig, axes = plt.subplots(len(responses), figsize=figsize)
-    for index, (name, response) in enumerate(sorted(responses.items())):
-        axis = axes[index] if not ax else ax
-        if name in expdata:
-            data = np.loadtxt(expdata[name])
-            time = data[:,0]
-            voltage = data[:,1] - junction_potential
-            axis.plot(time, voltage, color='lightgrey')
-        axis.plot(response['time'], response['voltage'])
-        if not ax:
-            axis.set_title(name, size='small')
-    fig.tight_layout()
+    Args:
+        params: Dictionary of AdEx parameters
+        I_ext: External current (pA)
+        dt_ms: Time step in milliseconds
+        duration_ms: Simulation duration in milliseconds
+
+    Returns:
+        time_array, voltage_array, w_array (all in SI units converted to mV/ms/pA)
+    """
+    # Adjusted variable names to match Jaxley implementation
+    C_m = params['C_m'] * pF
+    g_L = params['g_L'] * nS
+    E_L = params['E_L'] * mV
+    v_T = params['v_T'] * mV
+    delta_T = params['delta_T'] * mV
+    v_threshold = params['v_threshold'] * mV
+    v_reset = params['v_reset'] * mV
+    tau_w = params['tau_w'] * ms
+    a = params['a'] * nS
+    b = params['b'] * pA
+
+    # External current
+    I_input = params['I'] * pA
+
+    # AdEx equations
+    eqs = '''
+    dv/dt = (g_L*(E_L-v) + g_L*delta_T*exp((v-v_T)/delta_T) - w + I_input)/C_m : volt
+    dw/dt = (a*(v-E_L) - w)/tau_w : amp
+    '''
+
+    # Create neuron
+    defaultclock.dt = dt_ms * ms
+    neuron = NeuronGroup(1, eqs, threshold='v>v_threshold', reset='v=v_reset; w+=b', method='euler')
+
+    # Initial conditions
+    neuron.v = params['v_reset'] * mV
+    neuron.w = 0
+
+    # Record variables
+    mon_v = StateMonitor(neuron, 'v', record=True)
+    mon_w = StateMonitor(neuron, 'w', record=True)
+    spike_mon = SpikeMonitor(neuron)
+
+    # Run simulation
+    run(duration_ms * ms)
+    I_input = 0.0 * pA
+    run((t_max_ms - duration_ms) * ms)
+
+    # Extract results (convert back to standard units)
+    time_array = mon_v.t / ms  # ms
+    voltage_array = mon_v.v[0] / mV  # mV
+    w_array = mon_w.w[0] / pA  # pA
+
+    return time_array, voltage_array, w_array, spike_mon.t / ms
+
+
+def plot_and_run(module, duration=600., t_max=600.):
+    dt = 0.01
+
+    parameters = NAUD_PARAMETERS[module]
+
+    t_brian, v_brian, w_brian, spikes_brian = run_brian2_adex(
+        parameters, dt_ms=dt, duration_ms=duration, t_max_ms=t_max
+    )
+
+    t_jaxley, v_jaxley, w_jaxley, s_jaxley = run_jaxley_adex(
+        parameters, dt_ms=dt, duration_ms=duration, t_max_ms=t_max
+    )
+
+    fig = plot_comparison(
+        (t_brian, v_brian, w_brian, spikes_brian),
+        (t_jaxley, v_jaxley, w_jaxley, s_jaxley),
+        NAUD_PARAMETERS['tonic'],
+        title=f"AdEx Comparison: {module} Spiking (Naud et al. 2008)"
+    )
+
+    plt.savefig(f'adex_comparison_{module}.pdf', dpi=150, bbox_inches='tight')
+    plt.show()
+
+
+
+def run_all_comparisons(modules=['tonic', 'adaptation', 'original'], duration=400., t_max=500., dt=0.01):
+    """
+    Run all module comparisons and return collected results for combined plotting.
+
+    Args:
+        modules: List of module names to run
+        duration: Stimulus duration in ms
+        t_max: Total simulation time in ms
+        dt: Time step in ms
+
+    Returns:
+        results_dict: Dict mapping module name -> (brian2_results, jaxley_results)
+        params_dict: Dict mapping module name -> parameters
+    """
+    results_dict = {}
+    params_dict = {}
+
+    for module in modules:
+        parameters = NAUD_PARAMETERS[module]
+
+        t_brian, v_brian, w_brian, spikes_brian = run_brian2_adex(
+            parameters, dt_ms=dt, duration_ms=duration, t_max_ms=t_max
+        )
+
+        t_jaxley, v_jaxley, w_jaxley, s_jaxley = run_jaxley_adex(
+            parameters, dt_ms=dt, duration_ms=duration, t_max_ms=t_max
+        )
+
+        # Capitalize module name for display
+        display_name = module.capitalize()
+        results_dict[display_name] = (
+            (t_brian, v_brian, w_brian, spikes_brian),
+            (t_jaxley, v_jaxley, w_jaxley, s_jaxley)
+        )
+        params_dict[display_name] = parameters
+
+    return results_dict, params_dict
+
+
+# Run individual comparisons (uncomment if needed)
+# plot_and_run('tonic', duration=400.)
+# plot_and_run('adaptation', duration=400.)
+# plot_and_run('original', duration=400.)
+
+# Run combined comparison
+results, params = run_all_comparisons()
+
+# Option 1: Combined figure with voltage overlay and spike raster (2 rows x 3 cols)
+fig = plot_combined_comparison(results, params, figsize=(14, 6))
+plt.savefig('adex_comparison_combined.pdf', dpi=150, bbox_inches='tight')
+plt.show()
+
+# Option 2: Minimal figure with only voltage overlays (1 row x 3 cols)
+# fig = plot_combined_overlay_only(results, params, figsize=(12, 3))
+# plt.savefig('adex_comparison_combined_minimal.pdf', dpi=150, bbox_inches='tight')
+
+
+#--------------------------------
+# Training on bio-physical data
+#--------------------------------
+#
+# For now I just want to trian on a single voltage trace file and then later go from there
+
+
+
+#for path in data.keys():
+#    read_data(path, data[path])
+
+
+# =============================================================================
+# Training Infrastructure for AdEx Parameter Optimization
+# =============================================================================
 
 
 def read_data(path, expdata, junction_potential=0):
@@ -180,59 +287,6 @@ def read_data(path, expdata, junction_potential=0):
     plt.show()
 
 
-
-def plot_and_run(module, duration=600, t_max=600):
-    dt = 0.025
-
-    parameters = NAUD_PARAMETERS[module]
-
-    t_jaxley, v_jaxley, w_jaxley, s_jaxley = run_jaxley_adex(
-        parameters, dt_ms=dt, duration_ms=duration, t_max_ms=t_max
-    )
-
-    # plt.savefig(f'adex_comparison_{module}.png', dpi=150, bbox_inches='tight')
-    # plt.show()
-
-"""## Tonic"""
-
-#plot_and_run('tonic')
-
-"""## Adaptation"""
-
-#plot_and_run('adaptation')
-
-"""## Original"""
-
-#plot_and_run('original')
-
-#plot_and_run('original', duration=400.0)
-
-
-data = {
-    'mCP-dspn-e150917_c6_D1-manimal_1_n24_04102017_cel1/': {
-        'IV_499.soma.v': 'expdata/ECBL_IV_ch5_499.dat',
-        'IV_499.soma.i': 'expdata/ECBL_IV_ch4_499.dat',
-        'IV_502.soma.v': 'expdata/ECBL_IV_ch5_502.dat',    
-        'IV_502.soma.i': 'expdata/ECBL_IV_ch4_502.dat',    
-        'IDthresh-sub_541.soma.v': 'expdata/ECBL_IDthresh_ch5_541.dat',    
-        'IDthresh-sub_541.soma.i': 'expdata/ECBL_IDthresh_ch4_541.dat',    
-        'IDthresh_543.soma.v': 'expdata/ECBL_IDthresh_ch5_543.dat',    
-        'IDthresh_543.soma.i': 'expdata/ECBL_IDthresh_ch4_543.dat',    
-        'IDthresh_544.soma.v': 'expdata/ECBL_IDthresh_ch5_544.dat',    
-        'IDthresh_544.soma.i': 'expdata/ECBL_IDthresh_ch4_544.dat',    
-        'IDthresh_553.soma.v': 'expdata/ECBL_IDthresh_ch5_553.dat',
-        'IDthresh_553.soma.i': 'expdata/ECBL_IDthresh_ch4_553.dat'
-    }
-}
-
-
-#for path in data.keys():
-#    read_data(path, data[path])
-
-
-# =============================================================================
-# Training Infrastructure for AdEx Parameter Optimization
-# =============================================================================
 
 # Parameter bounds for biophysically realistic constraints
 PARAM_BOUNDS = {
@@ -510,9 +564,10 @@ def setup_trainable_cell(initial_params, current_trace, dt_ms,
     cell.set("v", initial_params['E_L'])
 
     # Make all AdEx parameters trainable
-    cell.make_trainable("length")
-    cell.make_trainable("radius")
-    cell.make_trainable("AdEx_C_m")
+    #cell.make_trainable("length")
+    #cell.make_trainable("radius")
+
+    #cell.make_trainable("AdEx_C_m")
     cell.make_trainable("AdEx_g_L")
     cell.make_trainable("AdEx_E_L")
     cell.make_trainable("AdEx_v_T")
@@ -830,10 +885,10 @@ def run_training_example():
     results = train_adex(
         exp_data,
         initial_params=initial_params,
-        n_epochs=500,
-        lr=0.01,  # Higher learning rate since gradients can be small
-        sigma_ms=5.0,  # Wider spike timing tolerance
-        surrogate_type="exponential",
+        n_epochs=80,
+        lr=0.05,  # Higher learning rate since gradients can be small
+        sigma_ms=2.0,  # Wider spike timing tolerance
+        surrogate_type="sigmoid",
         surrogate_slope=10.0,
         print_every=10
     )

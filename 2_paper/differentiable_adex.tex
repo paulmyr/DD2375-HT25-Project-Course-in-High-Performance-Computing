@@ -263,13 +263,12 @@ We follow the implementation pattern of \cite{Deistler2025}.
 The \ac{AdEx} model consists of two coupled differential equations requiring different numerical treatment:
 
 \textbf{Adaptation current $w$:}
-Equation~\ref{eq:adex2} is linear in $w$, allowing the use of exponential Euler integration for improved numerical stability:
+Equation~\ref{eq:adex2} is a linear dynamic system in $w$, allowing the use of exponential Euler integration.
+It has the analytical solution
 \begin{equation}
-  todo...
-\end{equation}
-\itodo[orange]{COMPLETE: Add exponential Euler formula for w:\\
-$w(t+\Delta t) = w(t) \cdot e^{-\Delta t / \tau_w} + a(V - E_L)(1 - e^{-\Delta t / \tau_w})$\\
-Explain: exact solution for linear ODE, more stable than forward Euler}
+  w(t+\Delta t) = w(t) \cdot e^{-\Delta t / \tau_w} + a(V - E_L)(1 - e^{-\Delta t / \tau_w})
+\end{equation}\label{eq:adaption-current-integration}
+which gives increased numerical stability compared to e.g. forward euler methods.
 
 \textbf{Membrane potential $V$:}
 The exponential term in Equation~\ref{eq:adex1} makes this equation nonlinear, requiring forward Euler integration:
@@ -326,13 +325,28 @@ To circumvent this problem, we compute a fictitious cylindrical geometries whose
 This scales injected currents to maintain correct dynamics.
 
 \subsection{Implementation Verification}\label{sec:verification}
+\begin{figure*}
+  \begin{center}
+    \includegraphics[width=\textwidth]{figures/adex_comparison_combined.pdf}
+  \end{center}
+  \caption{Left to right: tonic, adaption and original parameters.
+Tonic and adaption parameters refer to the parameters provided by \cite{Naud2008}, original parameters are the parameters used in the original AdEx paper \cite{Brette2005}.
+Top row shows the simulated voltage traces.
+Interesting to note is that when the threshold is reached, the voltage is reset in the same time step.
+This leads to the voltage never crossing the threshold line in the recordings.
+Second row displays the adaption current $w$.
+Last row compares the spike timings between \texttt{Brian2} and \texttt{Jaxley}.
+We expect minor numerical differences, mainly to the fact that different integration methods are used.}\label{fig:brian_comparison}
+\end{figure*}
+
 To verify the correctness of our \ac{AdEx} implementation, we compare simulation outputs against Brian2 \cite{Stimberg2019}, a widely-used reference simulator for spiking neural networks.
 
 \subsubsection{Comparison Setup}
 Both simulators are configured identically:
 \begin{itemize}
-    \item Time step: $\Delta t = 0.025$ ms
-    \item Simulation duration: 600 ms
+    \item Time step: $\Delta t = 0.01$ ms
+    \item Simulation duration: 500 ms
+    \item Stimulation duration: 400 ms
     \item Initial conditions: $V(0) = V_r$, $w(0) = 0$
 \end{itemize}
 
@@ -376,11 +390,54 @@ $I = 2500$.
 \subsubsection{Comparison Metrics}
 We assess implementation correctness through:
 \begin{itemize}
-  \item is graphical overlay of functions enough\mtodo{figure this out}?
+  \item \textbf{Visual comparison:} Overlay of voltage traces from both simulators (Figure~\ref{fig:brian_comparison}).
+  \item \textbf{Spike count:} Both implementations produce identical spike counts for all test configurations.
+  \item \textbf{Spike timing:} Maximum absolute difference in spike times $\max_i |t_i^{\text{Jaxley}} - t_i^{\text{Brian2}}| < 1$ ms.
 \end{itemize}
 
 \subsection{Parameter Optimisation Evaluation}\label{sec:param_opt}
 To evaluate the effectiveness of gradient-based optimisation with surrogate gradients, we fit \ac{AdEx} model parameters to experimental voltage recordings.
+
+As training data, we used voltage recordings from mouse striatal neurons given by \cite{Johansson2020}.
+For now we only used a single recording. 
+The data can be found in the cell folder \texttt{mCP-dspn-e150917\_c6\_D1-manimal\_1\_n24\_04102017\_cel1}:
+\texttt{ECBL\_IDthresh\_ch4\_553.dat} (stimulation) and
+\texttt{ECBL\_IDthresh\_ch5\_553.dat} (cell response)
+
+As simulation parameters we used \itodo[red]{important: finish this}
+
+%  - Time step (dt): inferred from experimental data (~0.1 ms typical for such recordings)
+%  - Maximum training window: 500 ms (max_duration_ms = 500.0)
+%  - Total simulation duration: stim_duration_ms + 100 ms (includes post-stimulus period)
+%  - Surrogate gradient: sigmoid with slope = 25.0
+%
+%  Training Setup
+%
+%  - Optimizer: Adam (via Optax)
+%  - Learning rate: 0.1
+%  - Epochs: 500
+%  - Gradient clipping: global norm clipping with max norm = 2.0
+%  - Early stopping: best parameters checkpointed based on lowest loss
+%  - NaN handling: gradient updates skipped when NaN detected
+%
+%  Trainable vs Fixed Parameters
+%  ┌──────────────────────────────────┬───────────────────────────────────┐
+%  │            Trainable             │               Fixed               │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ g_L (leak conductance)           │ C_m (membrane capacitance)        │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ E_L (leak reversal)              │ delta_T (spike slope factor)      │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ v_T (spike threshold)            │ v_threshold (detection threshold) │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ v_reset (reset potential)        │ radius, length (geometry)         │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ tau_w (adaptation time constant) │                                   │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ a (subthreshold adaptation)      │                                   │
+%  ├──────────────────────────────────┼───────────────────────────────────┤
+%  │ b (spike-triggered adaptation)   │                                   │
+%  └──────────────────────────────────┴───────────────────────────────────┘
 
 \subsubsection{Dataset}
 We use intracellular recordings from striatal projection neurons provided by Johansson and Silberberg \cite{Johansson2020}.
@@ -390,7 +447,6 @@ The dataset contains voltage traces from four distinct striatal neuron types, re
 \subsubsection{Optimisation Setup}
 We optimise a subset of \ac{AdEx} parameters that lack direct physiological measurements: $\{a, b, \tau_w, V_T, \Delta_T\}$.\mtodo[red]{Fix this! This is wrong.}
 Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based on experimental measurements where available.
-
 
 \subsection{Loss Function}\mtodo[orange]{Should this be a subsection or subsubsection?}
 \subsubsection{MSE}
@@ -468,17 +524,15 @@ The comparison is MSE vs feature-based, not your method vs Guarino's grid search
 
 \section{Experimental Setup}\label{sec:expsetup}
 All experiments were conducted on a 2020 Apple Silicon Mac.
+Software is written in python and executed using python version 3.14.2.
 The implementation is built on Jaxley version 0.12.0.
 Comparison were performed using the Brian2 simulator 2.10.1.
-
-\itodo[blue]{Experimental Setup - include:\\
-- Dataset description (striatal neurons)\\
-- Simulation parameters (dt, duration)\\
-- Training setup (Adam, learning rate, epochs, gradient clipping)\\
-- Hardware (CPU/GPU - note that GPU didn't help, this is a finding)\\
-- Which parameters are trainable vs fixed}
+Full list of software versions is found in the \href{https://github.com/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/blob/master/requirements.txt}{requirements.txt}
 
 \section{Results}\label{sec:results}
+
+
+
 \itodo[blue]{RESULTS - Structure as follows:\\
 \textbf{5.1 Implementation Verification}\\
 - Brian2 comparison figure (you have this)\\

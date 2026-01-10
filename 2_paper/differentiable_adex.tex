@@ -399,131 +399,163 @@ We assess implementation correctness through:
 
 \subsection{Parameter Optimisation Evaluation}\label{sec:param_opt}
 To evaluate the effectiveness of gradient-based optimisation with surrogate gradients, we fit \ac{AdEx} model parameters to experimental voltage recordings.
-
-As training data, we used voltage recordings from mouse striatal neurons given by \cite{Johansson2020}.
-For now we only used a single recording. 
-\footnote{The data can be found in the cell folder \texttt{mCP-dspn-e150917\_c\-6\_D1-manimal\_1\_n24\_04102017\_cel1/}\texttt{ECBL\_IDthresh\_ch\-4\_553.dat} (stimulation) and
-\texttt{ECBL\_IDthresh\_ch5\_553.dat} (cell response)}
-
-As simulation parameters we used \itodo[red]{important: finish this}
-
-%  - Time step (dt): inferred from experimental data (~0.1 ms typical for such recordings)
-%  - Maximum training window: 500 ms (max_duration_ms = 500.0)
-%  - Total simulation duration: stim_duration_ms + 100 ms (includes post-stimulus period)
-%  - Surrogate gradient: sigmoid with slope = 25.0
-%
-%  Training Setup
-%
-%  - Optimizer: Adam (via Optax)
-%  - Learning rate: 0.1
-%  - Epochs: 500
-%  - Gradient clipping: global norm clipping with max norm = 2.0
-%  - Early stopping: best parameters checkpointed based on lowest loss
-%  - NaN handling: gradient updates skipped when NaN detected
-%
-%  Trainable vs Fixed Parameters
-%  ┌──────────────────────────────────┬───────────────────────────────────┐
-%  │            Trainable             │               Fixed               │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ g_L (leak conductance)           │ C_m (membrane capacitance)        │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ E_L (leak reversal)              │ delta_T (spike slope factor)      │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ v_T (spike threshold)            │ v_threshold (detection threshold) │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ v_reset (reset potential)        │ radius, length (geometry)         │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ tau_w (adaptation time constant) │                                   │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ a (subthreshold adaptation)      │                                   │
-%  ├──────────────────────────────────┼───────────────────────────────────┤
-%  │ b (spike-triggered adaptation)   │                                   │
-%  └──────────────────────────────────┴───────────────────────────────────┘
+\begin{table}[thb]
+\centering
+\caption{Initial AdEx model parameters and trainability}
+\label{tab:initial-params}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Initial Value} & \textbf{Trainable} \\
+\midrule
+Membrane capacitance & $C_m$ & 200.0\,pF & No \\
+Leak conductance & $g_L$ & 10.0\,nS & Yes \\
+Leak reversal potential & $E_L$ & $-68.0$\,mV & Yes \\
+Spike threshold & $V_T$ & $-45.0$\,mV & Yes \\
+Slope factor & $\Delta_T$ & 2.0\,mV & No \\
+Spike detection threshold & $V_\text{threshold}$ & $-20.0$\,mV & No \\
+Reset potential & $V_\text{reset}$ & $-55.0$\,mV & Yes \\
+Adaptation time constant & $\tau_w$ & 100.0\,ms & Yes \\
+Subthreshold adaptation & $a$ & 2.0\,nS & Yes \\
+Spike-triggered adaptation & $b$ & 1.0\,pA & Yes \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsubsection{Dataset}
 We use intracellular recordings from striatal projection neurons provided by Johansson and Silberberg \cite{Johansson2020}.
 The dataset contains voltage traces from four distinct striatal neuron types, recorded under current-clamp conditions.
-\mtodo{Specify which 4 neuron types once data is confirmed}
+However, we only used a single trace\footnote{Files can be found \href{https://github.com/a1eko/humanspn/tree/df6ec55178c81e64fdcf4ae79aaa1872458c621f/models/optimisations/mCP-dspn-e150917_c6_D1-manimal_1_n24_04102017_cel1/expdata}{here}. 
+Voltage file: \texttt{ECBL\_IDthresh\_ch5\_553.dat}
+Current file: \texttt{ECBL\_IDthresh\_ch4\_553.dat}}, mainly due to time constraint.
 
 \subsubsection{Optimisation Setup}
-We optimise a subset of \ac{AdEx} parameters that lack direct physiological measurements: $\{a, b, \tau_w, V_T, \Delta_T\}$.\mtodo[red]{Fix this! This is wrong.}
-Parameters with known physiological values ($C$, $g_L$, $E_L$) are fixed based on experimental measurements where available.
 
-\subsection{Loss Function}\mtodo[orange]{Should this be a subsection or subsubsection?}
+We optimise the following subset of \ac{AdEx} parameters: $\{g_L, E_L, V_T, a, b, \tau_w, V_T, v_{\text{reset}}\}$.
+Parameters $\{C_m, \Delta_T, v_threshold\}$ were fixed.
+Initial parameters are given in table \ref{tab:initial-params}.
+
+We evaluated two different loss functions: \ac{MSE} and a differentiable version of a feature based loss developed by Guarino et al.\cite{Guarino2025}, which we will name Guarino loss for the remaining report.
+Detailed hyperparameters can be found in table \ref{tab:training-params}, however, most parameters are chosen arbitrary.
+Due to time reasons no extensive hyperparameter tuning was conducted.
+We plan on revising this in future work.
+
+\begin{table}[t]
+\centering
+\caption{Training hyperparameters for AdEx optimization}
+\label{tab:training-params}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parameter} & \textbf{MSE} & \textbf{Guarino} \\
+\midrule
+\multicolumn{3}{l}{\textit{Optimization}} \\
+Optimizer & Adam & Adam \\
+Learning rate & 0.1 & 0.1 \\
+Gradient clipping (global norm) & 2.0 & 2.0 \\
+Number of epochs & 500 & 500 \\
+\midrule
+\multicolumn{3}{l}{\textit{Surrogate Gradient}} \\
+Surrogate type & sigmoid & sigmoid \\
+Surrogate slope & 25.0 & 25.0 \\
+\midrule
+\multicolumn{3}{l}{\textit{Loss-Specific Parameters}} \\
+Normalize & False & --- \\
+Temperature ($\tau$) & --- & 0.3 \\
+Beta ($\beta$) & --- & 10.0 \\
+Missing feature penalty & --- & 3.0 \\
+\midrule
+\multicolumn{3}{l}{\textit{Guarino Feature Weights}} \\
+$w_{t_\text{first}}$ & --- & 5.0 \\
+$w_{t_\text{second}}$ & --- & 3.0 \\
+$w_{t_\text{third}}$ & --- & 2.0 \\
+$w_{t_\text{last}}$ & --- & 1.0 \\
+$w_{\text{inv\_first\_ISI}}$ & --- & 2.0 \\
+$w_{\text{inv\_last\_ISI}}$ & --- & 1.0 \\
+$w_{\text{firing\_freq}}$ & --- & 1.0 \\
+$w_{V_\text{stim\_end}}$ & --- & 0.5 \\
+\midrule
+\multicolumn{3}{l}{\textit{Simulation}} \\
+Max stimulus duration & \multicolumn{2}{c}{500\,ms} \\
+Spike threshold & \multicolumn{2}{c}{$-20$\,mV} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Loss Functions}
 \subsubsection{MSE}
-The \ac{MSE}-Loss is defined as 
+Our initial approach was to use \ac{MSE} as a loss function.
+It is defined as
 \begin{equation}\label{eq:MSE}
     \mathcal{L}_{\text{MSE}}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \left( V_{\text{sim}}(t; \theta) - V_{\text{exp}}(t) \right)^2,
 \end{equation}
 where $\theta$ denotes the trainable parameters.
 
-\itodo[blue]{write MSE section}
-\begin{itemize}
-  \item MSE on voltage traces seems natural but fails for spiking neurons
-  \item  Problem: small timing differences create huge MSE even if spike patterns are similar
-  \item The loss landscape is non-convex; gradients don't point toward good solutions
-  \item Show equation, explain why it fails
-\end{itemize}
+We were not able to achieve any sensible results using this loss function.
+Since other works mainly use feature-based loss functions, we implemented one as well.
+
 \subsubsection{Feature-Based Loss}
-\itodo[blue]{write feature-based loss section}
+Simplified neuron models are usually not required to perfectly imitate the voltage trace of a neuron.
+Their main requirement is to faithfully replicate the firing behaviour.
+Rather than comparing raw voltage traces, Guarino et al.~\cite{Guarino2025} proposed a loss function based on electrophysiological features:
+To capture the essential characteristics of a neuron, they identified:
 \begin{itemize}
-  \item Alternative: extract electrophysiological features, compare features instead of traces
-  \item Based on Guarino et al. cite
-  \item Features: spike timing (t\_first, t\_second, t\_last), ISI (inverse first/last ISI), firing frequency, v\_stim\_end
-  \item Loss = weighted sum of relative errors: $|f_{sim} - f_{exp}| / |f_{exp}|$
-  \item Missing feature penalty: if exp has spike but sim doesn't, add penalty
+    \item \textbf{Spike timing:} time to first ($t_1$), second ($t_2$), third ($t_3$), and last spike ($t_{\text{last}}$)
+    \item \textbf{Interspike intervals:} inverse of first ISI ($1/\text{ISI}1$) and last ISI ($1/\text{ISI}{\text{last}}$)\mtodo{format this nicer}
+    \item \textbf{Firing rate:} mean firing frequency over the stimulus duration
+    \item \textbf{Subthreshold behaviour:} membrane voltage at stimulus end ($V_{\text{stimend}}$)
 \end{itemize}
+
+The loss is computed as a weighted sum of relative errors:
+\begin{equation}\label{eq:guarino}
+    \mathcal{L}_{\text{Guarino}} = \sum_i w_i \cdot \frac{|f_i^{\text{sim}} - f_i^{\text{exp}}|}{|f_i^{\text{exp}}| + \epsilon}
+\end{equation}
+where $f_i^{\text{sim}}$ and $f_i^{\text{exp}}$ denote simulated and experimental feature values respectively, and $w_i$ are feature-specific weights.
+When a feature is present in the experimental data but absent in the simulation (e.g., the experimental trace has three spikes but the simulation produces only one),
+a fixed penalty is added to encourage the optimizer to produce the correct number of spikes.
+
+This feature-based formulation addresses the spike timing sensitivity problem inherent to MSE:
+small temporal misalignments no longer produce catastrophic loss values, as long as the overall firing pattern---captured by the features---remains similar.
+
 \subsubsection{Differentiable Feature-Based Loss}
-\itodo[blue]{write feature-based loss section}
-\begin{itemize}
-  \item Challenge: feature extraction typically uses hard thresholds (non-differentiable)
-  \item Our contribution: soft/differentiable versions of all features
-  \item Soft spike count using surrogate spike indicator
-  \item Soft spike timing using weighted time averages
-  \item Temperature parameter controls sharpness vs gradient trade-off
-\end{itemize}
-\subsubsection{Multi-Trace Loss}
-\itodo[blue]{write feature-based loss section}
-\begin{itemize}
-  \item Single trace: many parameter combinations can produce similar output
-  \item Multi-trace: same parameters must match across different current injection levels
-  \item Provides much stronger constraints, better generalization
-\end{itemize}
+The feature-based loss requires extracting spike times and counts from voltage traces.
+Standard implementations use hard threshold crossings, which are non-differentiable.
+To enable gradient-based optimization, we developed soft approximations of the feature extraction operations.
 
-\mtodo[red]{DELETE these old todos, replace with new structure above}
-\mtodo{Consider spike-timing based loss as alternative, I even assume this is way to go.}
-\mtodo{Check what other ppl are doing}
+The core idea is to replace discrete spike detection with continuous values.
+The AdExSurrogate channel outputs a soft spike indicator $s(t) \in [0, 1]$ at each time step.
+The soft spike count becomes simply $N_{\text{spikes}}^{\text{soft}} = \sum_{t} s(t)$.
 
-\textbf{Optimiser:} Adam optimiser with learning rate $\eta$.
-\mtodo{Specify learning rate and number of iterations after experiments}
+For spike timing, we use cumulative sums to identify when the $n$-th spike occurs and compute a weighted average over time.
+Similarly, ISI features are derived from the difference between consecutive soft spike times.
+Features that require a minimum number of spikes (e.g., ISI needs at least two spikes) are weighted by soft validity flags that smoothly transition based on the spike count.
 
-\textbf{Initialisation:} Parameters are initialised within physiologically plausible ranges based on literature values \cite{Naud2008}.
+The soft approximations introduce two hyperparameters: a temperature $\tau$ that controls how sharp the spike selection is, and a sigmoid steepness $\beta$ for the masking operations.
+We used $\tau = 0.3$ and $\beta = 10.0$ based on initial experiments.
 
-\itodo[blue]{Differentiable Guarino et al.}
-Guarino et al. \cite{Guarino2025},
+We note that this differentiable feature extraction is a working implementation that has not been thoroughly validated.
+Due to time constraints, we did not perform extensive testing of the soft approximations against their hard counterparts, nor did we systematically tune the hyperparameters.
+The approach produces gradients and enables optimization, but the accuracy of the soft features compared to exact values remains to be studied in future work.
 
 \subsubsection{Evaluation Metrics}
 We assess optimisation performance through:
 \begin{itemize}
-    \item Final loss value (voltage trace MSE)
     \item Visual comparison of fitted vs.\ experimental traces
-    \item Spike timing accuracy (if applicable)
-    \item Convergence behaviour (loss vs.\ iteration)
+    \item Coincidence Factor for Spike Train Evaluation
 \end{itemize}
-\itodo[blue]{ADD: Coincidence Factor $\Gamma$ (Jolivet et al. 2008) as quantitative evaluation metric:\\
-\textbf{3.X.Y Coincidence Factor for Spike Train Evaluation}\\
-- The coincidence factor $\Gamma$ measures spike timing prediction quality, normalized by chance level\\
-- Formula: $\Gamma = \frac{N_{coinc} - \langle N_{coinc} \rangle}{0.5(N_{data} + N_{model})} \cdot \frac{1}{1 - 2f\Delta}$\\
-- $N_{coinc}$: coincidences within $\pm\Delta$ (default 2ms), $f$: model firing rate\\
-- $\Gamma = 1$: perfect prediction, $\Gamma = 0$: chance level, $\Gamma < 0$: worse than chance\\
-- Reference values from Jolivet et al.: well-fitted aEIF achieves $\Gamma_A \approx 0.82-0.83$\\
-- Use to compare: (1) our fitted parameters vs (2) well-fitted reference parameters\\
-- Implementation complete in \texttt{coincidence\_factor.py}}
 
+The \textbf{Coincidence Factor for Spike Train Evaluation $\Gamma$} measures spike timing prediction quality, normalized by chance level.
+It is given by
+\begin{equation}
+   \Gamma = \frac{N_{coinc} - \langle N_{coinc} \rangle}{0.5(N_{data} + N_{model})} \cdot \frac{1}{1 - 2f\Delta} 
+  \label{eq:coincidence-factor}
+\end{equation}\mtodo{verify formula}
+where $N_{coinc}$ describe coincidences within $\pm\Delta$ (default 2ms)
+and $f$ is the model firing rate.
 
-\mtodo[green]{REFRAME: You're not comparing \emph{against} Guarino as baseline.
-You're \emph{adapting} their feature-based approach for gradient-based optimization.
-The comparison is MSE vs feature-based, not your method vs Guarino's grid search.}
+In other words, it describes how good it compares to a random firing pattern. $\Gamma = 1$ means perfect prediction whereas $\Gamma = 0$ is the same as chance level.
+$\Gamma < 0$ therefore means it behaves worse than chance.
+
+Jolivet et al. achieved a $\Gamma$ value of $\approx 0.82-0.83$ for their well-fitted AdEx models.
+We use this to compare our fitted parameters.
 
 \section{Experimental Setup}\label{sec:expsetup}
 All experiments were conducted on a 2020 Apple Silicon Mac.
@@ -599,10 +631,10 @@ We visualized (see figure~\ref{fig:surrogate_gradients_comparison}) the backward
   The loss function must capture \emph{what} features matter rather than demanding exact sample-by-sample voltage alignment.
 
 \subsection{Parameter Estimation using Feature-Based Loss}
+\itodo[blue]{todo...}
 \subsection{Coincidence Factor}
-To evaluate the performance of the two loss functions, we simulated 
+To evaluate the performance of the two loss functions, we measured spike timing prediction quality using the coincidence factor $\Gamma$ from Jolivet et al.~\cite{Jolivet2008}, with a coincidence window $\Delta = 2$\,ms.
 
-We evaluated spike timing prediction quality using the coincidence factor $\Gamma$ from Jolivet et al.~\cite{Jolivet2008}, with coincidence window $\Delta = 2$\,ms.
 Table~\ref{tab:coincidence} compares different parameter configurations.
 
 \begin{table}[t]
@@ -623,7 +655,8 @@ Guarino loss & --- & --- & --- & --- \\
 
 \mtodo{Add bar chart figure comparing $\Gamma$ values with reference lines at 0.82 (well-fitted) and 0 (chance)}
 
-The trained parameters achieved $\Gamma = XXX$, indicating [GOOD/MODERATE/POOR] spike timing prediction compared to the Jolivet et al.\ benchmark of $\Gamma \approx 0.82$ for well-fitted models.
+Both sets of trained parameters achieved a disappointing $\Gamma$ of 0, indicating no spike timing prediction.
+However, there is value in the benchmark system we build.\itodo[red]{rephrase this!!!}
 \subsection{Summary}
 
 \itodo[blue]{RESULTS - Structure as follows:\\
@@ -682,8 +715,9 @@ I also want to thank Johan Eklund for my supervision.
 AI assistance was used for this project.
 All prompts were sent to Anthropics Opus 4.5 via Claude Code.
 Usage mainly included writing feedback, code refactoring, documentation of code and plotting scripts.
-It also included transcribing lists of values into tables (e.g. Table \ref{tab:adex_params}) from code or lists of values.
-Transcripts of prompts can be found \href{}{here}.
+For example, I used claude to rewrite my evaluation files into a coherent python module (see \href{https://github.com/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/blob/master/8_claude/evaluation_code_refactoring.md}{this prompt}).
+It also included transcribing lists of values into tables (e.g. Table \ref{tab:adex_params}) from code or text files.
+Transcripts of prompts can be found \href{https://github.com/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/tree/master/8_claude}{here}.
 All results were validated and double checked by hand.
 
 \acrodef{LIF}{Leaky Integrate-and-Fire}

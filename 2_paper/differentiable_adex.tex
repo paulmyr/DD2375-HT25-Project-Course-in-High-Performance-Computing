@@ -609,116 +609,114 @@ We visualized (see figure~\ref{fig:surrogate_gradients_comparison}) the backward
 \end{figure}
 
 \subsection{Parameter Estimation using MSE}
-  The natural first approach for parameter estimation is to minimize the \ac{MSE}\ref{eq:MSE} between simulated and experimental voltage traces.
-  However, our experiments indicated that this loss function is fundamentally unsuitable for spiking neurons.
-  A core problem is \emph{spike timing sensitivity}: even when simulated and experimental traces exhibit similar firing patterns, small temporal misalignments between spikes create disproportionately large MSE values.
-  Consider two traces with identical spike counts and frequencies, but with spikes offset by 2\,ms.
-  During each spike, the voltage difference can exceed 100\,mV (from resting potential to spike peak), resulting in enormous per-sample errors that dominate the loss.
-  This timing sensitivity manifests in a highly non-convex loss landscape.
-  The gradient at any point reflects primarily the instantaneous voltage mismatch rather than structural similarity of the spike trains.
-  Consequently, gradient descent steps often move parameters in directions that reduce voltage error at specific time points while disrupting the overall firing pattern.
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{figures/mse_training_results.pdf}
+  \end{center}
+  \caption{Left: simulated voltage using parameters trained using \ac{MSE} loss.
+Right: loss over training epoch, it converges into non spiking behaviour, trying to minimize sub-threshold loss}\label{fig:mse-training}
+\end{figure}
 
-  Additionally, perfekt spike time matchings are punished.
-  This is because \ac{AdEx} values are reset before the jaxley simulator records the voltage trace --- if experimental data and simulation data would spike at the exact same time, 
-  the loss would be huge (AdEx is at $V_{r}$, experiment is at $V_{\text{peak}}$).
-  This enforces a mismatch between spike timing and simulation.
+The natural first approach for parameter estimation is to minimize the \ac{MSE}\ref{eq:MSE} between simulated and experimental voltage traces.
+However, our experiments indicated that this loss function is fundamentally unsuitable for spiking neurons.
+A core problem is \emph{spike timing sensitivity}: even when simulated and experimental traces exhibit similar firing patterns, small temporal misalignments between spikes create disproportionately large MSE values.
+Consider two traces with identical spike counts and frequencies, but with spikes offset by 2\,ms.
+During each spike, the voltage difference can exceed 100\,mV (from resting potential to spike peak), resulting in enormous per-sample errors that dominate the loss.
+This timing sensitivity manifests in a highly non-convex loss landscape.
+The gradient at any point reflects primarily the instantaneous voltage mismatch rather than structural similarity of the spike trains.
+Consequently, gradient descent steps often move parameters in directions that reduce voltage error at specific time points while disrupting the overall firing pattern.
 
-  We attempted MSE-based optimization using the same experimental recordings and training setup described in Section~\ref{sec:param_opt}.
-  The optimizer converged to parameter configurations that minimized voltage deviation during subthreshold periods but failed to produce correct spiking behaviour.
-  In many runs, the model either stopped spiking entirely (eliminating spike-related MSE contributions) or produced spike patterns uncorrelated with the experimental data.
+Additionally, perfekt spike time matchings are punished.
+This is because \ac{AdEx} values are reset before the jaxley simulator records the voltage trace --- if experimental data and simulation data would spike at the exact same time, 
+the loss would be huge (AdEx is at $V_{r}$, experiment is at $V_{\text{peak}}$).
+This enforces a mismatch between spike timing and simulation.
 
-  This leads us to believe that MSE loss, while theoretically sound for continuous signals, is ill-suited for discrete event (spike) matching.
-  The loss function must capture \emph{what} features matter rather than demanding exact sample-by-sample voltage alignment.
+We attempted MSE-based optimization using the same experimental recordings and training setup described in Section~\ref{sec:param_opt}.
+The optimizer converged to parameter configurations that minimized voltage deviation during subthreshold periods but failed to produce correct spiking behaviour.
+In many runs, the model either stopped spiking entirely (eliminating spike-related MSE contributions) or produced spike patterns uncorrelated with the experimental data.
+
+This leads us to believe that MSE loss, while theoretically sound for continuous signals, is ill-suited for discrete event (spike) matching.
+The loss function must capture \emph{what} features matter rather than demanding exact sample-by-sample voltage alignment.
 
 \subsection{Parameter Estimation using Feature-Based Loss}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{figures/guarino_training_results.pdf}
+  \end{center}
+  \caption{Left: simulated voltage using parameters trained using guarino loss.
+Even though parameters are not well-fitted enough to faithfully reproduce neuron behaviour, it shows better approximation behaviour than \ac{MSE} loss altogether.
+Further improvement and verification needed to confidently evaluate this approach.
+Right: loss over training epoch. Loss does not decrease monotonically, indicating non-convex parameter space.}\label{fig:guarino-training}
+\end{figure}
+
 \itodo[blue]{todo...}
+
 \subsection{Coincidence Factor}
-To evaluate the performance of the two loss functions, we measured spike timing prediction quality using the coincidence factor $\Gamma$ from Jolivet et al.~\cite{Jolivet2008}, with a coincidence window $\Delta = 2$\,ms.
+To evaluate the performance of the two loss functions, we measured spike timing prediction quality using the coincidence factor $\Gamma$ from Jolivet et al.~\cite{Jolivet2008},
+with a coincidence window $\Delta = 2$\,ms.
+We found that for both training approaches (\ac{MSE}-based and guarino-based) could not produce meaningful parameter sets,
+both produced parameter sets having a measured spike timing prediction quality of $\Gamma \approx 0$.
 
-Table~\ref{tab:coincidence} compares different parameter configurations.
+\begin{figure*}
+  \begin{center}
+    \includegraphics[width=\textwidth]{figures/coincidence_evaluation.pdf}
+  \end{center}
+  \caption{
+}\label{fig:coincidence_evaluation}
+\end{figure*}
 
-\begin{table}[t]
-\centering
-\caption{Coincidence factor $\Gamma$ for different parameter sets. Reference: well-fitted aEIF achieves $\Gamma \approx 0.82$--$0.83$~\cite{Jolivet2008}.}
-\label{tab:coincidence}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Parameters} & $\Gamma$ & $N_{\text{coinc}}$ & $N_{\text{exp}}$ & $N_{\text{sim}}$ \\
-\midrule
-Initial (untrained) & --- & --- & --- & --- \\
-MSE loss & --- & --- & --- & --- \\
-Guarino loss & --- & --- & --- & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
-\mtodo{Run evaluate\_coincidence.py and fill in actual values}
+We attribute this to the following reasons:
+\begin{itemize}
+  \item \textbf{Non-convex parameter-space:} The AdEx model has many interdependent parameters. This results in a non-convex optimization landscape with numerous local minima.
+    Gradient-based optimization methods can easily become trapped in suboptimal regions that produce incorrect spike timing despite achieving low training loss.
+  \item \textbf{Limited training data:} The models were trained on a single experimental trace with one stimulus condition.
+    We don't think overfitting was a particular problem, but future work might want to build a more robust training system.
+  \item \textbf{Surrogate gradients:} The use of a surrogate for the discontinuous spike mechanism may change the model dynamics and could have introduced bias to the optimization.
+  \item \textbf{More careful loss function design:} Due to time constraints, there was no tweaking of feature weights etc. in the feature-based loss function.
+    A lot more careful loss function tuning could greatly improve the results of the training.
+  \item \textbf{Skewed voltage representation:} The recorded voltages in the simulation don't capture the true spike of the action potential.
+    Especially non-feature based loss functions (e.g. \ac{MSE}) are inherently limited in how well they can reproduce spiking behaviour.
+\end{itemize}
 
-\mtodo{Add bar chart figure comparing $\Gamma$ values with reference lines at 0.82 (well-fitted) and 0 (chance)}
-
-Both sets of trained parameters achieved a disappointing $\Gamma$ of 0, indicating no spike timing prediction.
-However, there is value in the benchmark system we build.\itodo[red]{rephrase this!!!}
-\subsection{Summary}
-
-\itodo[blue]{RESULTS - Structure as follows:\\
-\textbf{5.2 Gradient Flow Verification}\\
-- Reference your test\_guarino\_features.py results (all 7 tests pass)\\
-- This proves surrogate gradients work in this context\\
-\textbf{5.3 MSE Loss Failure}\\
-- Show training with MSE doesn't converge / converges to wrong solution\\
-- Visualize: loss curve, final voltage trace comparison\\
-- Explain why: timing sensitivity, non-convex landscape\\
-\textbf{5.4 Feature-Based Loss Success}\\
-- Show training with Guarino features works\\
-- Your results: spike count matches (13 vs 13), firing freq matches (26 Hz)\\
-- Limitation: spike timing still needs tuning (35ms vs 22ms)\\
-- Multi-trace results if available\\
-\textbf{5.5 Quantitative Summary}\\
-- Table comparing MSE vs Feature-based on key metrics\\
-- Spike count error, frequency error, timing error\\
-\textbf{5.6 Coincidence Factor Evaluation}\\
-- Report $\Gamma$ values for fitted parameters vs experimental data\\
-- Compare against reference: well-fitted aEIF achieves $\Gamma_A \approx 0.82-0.83$\\
-- Use $\Delta = 2$ms coincidence window (standard from Jolivet et al.)}
+Future work could address these limitations by carefully adjusting spike-timing-aware loss functions, training on multiple stimulus conditions or changing the recording behaviour of the simulation.
 
 \section{Discussion and Conclusion}\label{sec:discussion}
-\itodo[blue]{DISCUSSION - Structure as follows:\\
-\textbf{6.1 Key Findings}\\
-- Surrogate gradients successfully enable differentiation through spikes\\
-- MSE loss is fundamentally unsuitable for spike train matching\\
-- Feature-based loss enables optimization of bulk firing properties\\
-- Spike timing precision remains challenging\\
-\textbf{6.2 Implications}\\
-- Loss function design is critical when bridging SNN techniques to biophysical fitting\\
-- Can't just transfer SNN methods directly; need domain-specific adaptations\\
-- Feature-based losses from computational neuroscience (Guarino, eFEL) are key\\
-\textbf{6.3 Limitations}\\
-- Spike timing not perfectly matched (honest about this)\\
-- Single neuron type tested\\
-- No runtime comparison (because convergence is the primary concern)\\
-\textbf{6.4 Future Work}\\
-- Better spike timing losses\\
-- More neuron types\\
-- Comparison with evolutionary methods once optimization is reliable\\
-\textbf{6.5 Conclusion}\\
-- We bridged two worlds: SNN surrogate gradients + biophysical parameter fitting\\
-- Key insight: loss function design matters more than the optimization algorithm\\
-- Contribution: differentiable AdEx in Jaxley + understanding of loss requirements}
+We successfully implemented the \ac{AdEx} model in Jaxley and enable automatic differentiation through surrogate gradients.
+We discovered that \ac{MSE} is fundamentally unsuitable for training spiking behaviour.
+Feature-based losses show more promising optimization results, however, differentiability of the loss function as a fundamental requirement makes this a non-trivial problem to tackle.
+First evaluation showed that spike timing precision remains challenging, however it is a crucial requirement for useful bio-physical neuron simulations.
+
+Loss function design remains a challenging problem and is critical when bridging \ac{SNN} techniques to biophysical fitting.
+Therefore, \ac{SNN} techniques can't directly be transferred into the neuroscience domain, it requires more domain-specific adaptations.
+
+The main limitation of this work include that no accurate parameters could be produced.
+We only tested on a single neuron type and recording, making this work non-generalizable.
+Also, runtime- and convergence performance is not addressed because useful parameter results were the primary concern.
+
+Future work can address all these issues by optimizing the loss functions,
+can increase the neuron types and training setup as well as introduce a more thorough comparison with other state-of-the-art genetic / feature-based algorithms.
+
+We bridged two worlds: Gradient optimization methods using surrogate gradients and parameter fitting for simplified biophysical models.
+We discovered that loss function design matters more than the optimization algorithm and were able to produce a testing framework that showed exactly this.
+The main contribution was to implement a differentiable AdEx model Jaxley.
+We gained an understanding of loss requirements, and will iterate on this in the future.
+
 \section*{Acknowledgment}\label{sec:ack}
 I want to thank Alexander Kozlov for suggesting this topic and providing valuable insight and resources.
 I also want to thank Johan Eklund for my supervision.
 
-% -- References
-\bibliography{bibliography.bib}
-\bibliographystyle{IEEEtran}
-
 \section*{AI assistance disclosure}\label{sec:ai}
 AI assistance was used for this project.
-All prompts were sent to Anthropics Opus 4.5 via Claude Code.
+I used Anthropics Opus 4.5 via Claude Code.
 Usage mainly included writing feedback, code refactoring, documentation of code and plotting scripts.
 For example, I used claude to rewrite my evaluation files into a coherent python module (see \href{https://github.com/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/blob/master/8_claude/evaluation_code_refactoring.md}{this prompt}).
 It also included transcribing lists of values into tables (e.g. Table \ref{tab:adex_params}) from code or text files.
 Transcripts of prompts can be found \href{https://github.com/paulmyr/DD2375-HT25-Project-Course-in-High-Performance-Computing/tree/master/8_claude}{here}.
 All results were validated and double checked by hand.
+
+% -- References
+\bibliography{bibliography.bib}
+\bibliographystyle{IEEEtran}
 
 \acrodef{LIF}{Leaky Integrate-and-Fire}
 \acrodef{SG}{Surrogate Gradient}
